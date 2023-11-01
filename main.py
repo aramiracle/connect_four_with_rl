@@ -1,6 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGridLayout, QWidget, QLineEdit, QHBoxLayout
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGridLayout, QWidget, QLineEdit, QHBoxLayout
+from PyQt6.QtCore import Qt
 from dqn import DQNAgent, ConnectFourEnv  # Import DQNAgent and ConnectFourEnv from your original code
 import random
 import time
@@ -33,7 +33,7 @@ class ConnectFour(QMainWindow):
                 self.board[row][col] = button
 
         self.status_label = QLabel()
-        self.grid.addWidget(self.status_label, 6, 0, 1, 7, alignment=Qt.AlignCenter)
+        self.grid.addWidget(self.status_label, 6, 0, 1, 7, alignment=Qt.AlignmentFlag.AlignCenter)
 
         button_row_layout = QHBoxLayout()  # Create a horizontal layout for buttons and input fields
 
@@ -176,4 +176,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = ConnectFour()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

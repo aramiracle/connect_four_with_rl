@@ -1,6 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGridLayout, QWidget
-from PyQt5.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGridLayout, QWidget
+from PyQt6.QtCore import Qt
 
 class ConnectFour(QMainWindow):
     def __init__(self):
@@ -36,7 +36,7 @@ class ConnectFour(QMainWindow):
 
         # Create a status label to display the game's status
         self.status_label = QLabel()
-        self.grid.addWidget(self.status_label, 6, 0, 1, 7, alignment=Qt.AlignCenter)
+        self.grid.addWidget(self.status_label, 6, 0, 1, 7, alignment=Qt.AlignmentFlag.AlignCenter)
 
     def on_click(self, row, col):
         for r in reversed(range(6)):
@@ -82,4 +82,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = ConnectFour()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
