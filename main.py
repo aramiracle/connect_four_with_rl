@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGri
 from PyQt6.QtCore import Qt
 from dqn import DQNAgent, ConnectFourEnv  # Import DQNAgent and ConnectFourEnv from your original code
 import random
-import time
+import torch
 
 class ConnectFour(QMainWindow):
     def __init__(self):
@@ -46,6 +46,10 @@ class ConnectFour(QMainWindow):
         self.train_button.clicked.connect(self.start_training)
         button_row_layout.addWidget(self.train_button)
 
+        self.load_button = QPushButton("Load Agent")
+        self.load_button.clicked.connect(self.load_agent)
+        button_row_layout.addWidget(self.load_button)
+
         self.play_button = QPushButton("Play Game")
         self.play_button.clicked.connect(self.start_game)
         button_row_layout.addWidget(self.play_button)
@@ -72,16 +76,6 @@ class ConnectFour(QMainWindow):
             for row in range(6):
                 for col in range(7):
                     self.board[row][col].setStyleSheet("")
-
-    def replay_game(self):
-        if self.game_state_history:
-            self.play_button.setDisabled(True)
-            self.replay_button.setDisabled(True)
-            for game_state in self.game_state_history:
-                self.update_board_from_game_state(game_state)
-                time.sleep(1)  # Optional delay to make the replay more visible
-            self.play_button.setDisabled(False)
-            self.replay_button.setDisabled(False)
 
     def update_board_from_game_state(self, game_state):
         for row in range(6):
@@ -171,6 +165,22 @@ class ConnectFour(QMainWindow):
             if count >= 4:
                 return True
         return False
+    
+    def load_agent(self):
+        try:
+            checkpoint = torch.load('saved_agents/dqn_agent_after_training.pth')
+            self.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
+            self.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
+            self.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.status_label.setText("Agent loaded successfully.")
+
+            # Enable the "Play Game" button
+            self.play_button.setDisabled(False)
+
+        except FileNotFoundError:
+            self.status_label.setText("Agent file not found.")
+        except Exception as e:
+            self.status_label.setText("Failed to load agent: " + str(e))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

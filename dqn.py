@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 class ConnectFourEnv(gym.Env):
     def __init__(self):
-        self.board = None
+        self.board = np.zeros((6, 7), dtype=np.float32)
         self.current_player = 1
         self.winner = None
         self.max_moves = 42  # Maximum number of moves in Connect Four
@@ -213,4 +213,4 @@ if __name__ == '__main__':
         'model_state_dict': dqn_agent.model.state_dict(),
         'target_model_state_dict': dqn_agent.target_model.state_dict(),
         'optimizer_state_dict': dqn_agent.optimizer.state_dict(),
-    }, 'dqn_agent_after_training.pth')
+    }, 'saved_agents/dqn_agent_after_training.pth')
