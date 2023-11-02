@@ -14,7 +14,6 @@ class ConnectFour(QMainWindow):
         self.dqn_agent = DQNAgent(ConnectFourEnv())
         self.current_player = 1
         self.game_over = False
-        self.is_training = False
         self.game_state_history = []
 
     def initUI(self):
@@ -37,15 +36,6 @@ class ConnectFour(QMainWindow):
 
         button_row_layout = QHBoxLayout()  # Create a horizontal layout for buttons and input fields
 
-        self.episodes_label = QLabel("Num Episodes:")
-        button_row_layout.addWidget(self.episodes_label)
-        self.episodes_input = QLineEdit("100")
-        button_row_layout.addWidget(self.episodes_input)
-
-        self.train_button = QPushButton("Train AI")
-        self.train_button.clicked.connect(self.start_training)
-        button_row_layout.addWidget(self.train_button)
-
         self.load_button = QPushButton("Load Agent")
         self.load_button.clicked.connect(self.load_agent)
         button_row_layout.addWidget(self.load_button)
@@ -56,15 +46,6 @@ class ConnectFour(QMainWindow):
         self.play_button.setDisabled(True)
 
         self.grid.addLayout(button_row_layout, 7, 0, 1, 7)  # Add the button_row_layout in row 7
-
-    def start_training(self):
-        if not self.is_training:
-            num_episodes = int(self.episodes_input.text())
-            self.is_training = True
-            self.train_button.setDisabled(True)
-            self.dqn_agent.train(num_episodes=num_episodes)
-            self.is_training = False
-            self.play_button.setDisabled(False)
 
     def start_game(self):
         if not self.is_training:

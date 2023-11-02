@@ -35,19 +35,19 @@ class ConnectFourEnv(gym.Env):
 
             if self.check_win(row, action):
                 self.winner = self.current_player
-                reward = 1
+                reward = self.max_moves
                 done = True
             elif np.count_nonzero(self.board) == self.max_moves:
-                reward = 0
+                reward = self.max_moves
                 done = True
             else:
-                reward = 0
+                reward = -1
                 done = False
 
             self.current_player = 3 - self.current_player  # Switch players
         else:
             # Handle the case where the column is already full
-            reward = 0
+            reward = -self.max_moves
             done = False
 
         return self.board, reward, done, {}
@@ -204,7 +204,7 @@ if __name__ == '__main__':
     dqn_agent = DQNAgent(env)
 
     # Train the DQN agent
-    num_episodes = 30000
+    num_episodes = 10000
     dqn_agent.train(num_episodes=num_episodes)
 
    
