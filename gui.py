@@ -57,7 +57,6 @@ class ConnectFour(QMainWindow):
 
                 break
 
-
     def check_win(self, row, col):
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
         for dr, dc in directions:

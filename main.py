@@ -27,6 +27,7 @@ class ConnectFour(QMainWindow):
             for col in range(7):
                 button = QPushButton()
                 button.setFixedSize(80, 80)
+                # Connect the button click event to the on_click method with row and col arguments
                 button.clicked.connect(lambda _, row=row, col=col: self.on_click(row, col))
                 self.grid.addWidget(button, row, col)
                 self.board[row][col] = button
@@ -48,15 +49,14 @@ class ConnectFour(QMainWindow):
         self.grid.addLayout(button_row_layout, 7, 0, 1, 7)  # Add the button_row_layout in row 7
 
     def start_game(self):
-        if not self.is_training:
-            self.play_button.setDisabled(True)
-            self.current_player = 1
-            self.game_over = False
-            self.status_label.setText("")
-            self.game_state_history = []  # Clear the game state history
-            for row in range(6):
-                for col in range(7):
-                    self.board[row][col].setStyleSheet("")
+        self.play_button.setDisabled(True)
+        self.current_player = 1
+        self.game_over = False
+        self.status_label.setText("")
+        self.game_state_history = []  # Clear the game state history
+        for row in range(6):
+            for col in range(7):
+                self.board[row][col].setStyleSheet("")
 
     def update_board_from_game_state(self, game_state):
         for row in range(6):
@@ -86,8 +86,10 @@ class ConnectFour(QMainWindow):
     def play_ai_turn(self):
         if not self.game_over:
             action = self.dqn_agent.select_action(self.get_game_state(), epsilon=0.0)
+            available_columns = [col for col in range(7) if self.column_not_full(col)]
+            print(action)
             
-            if action is not None:  # Make sure the selected action is valid.
+            if (action is not None) and (action in available_columns):  # Make sure the selected action is valid.
                 if self.column_not_full(action):
                     for row in range(5, -1, -1):
                         if self.board[row][action].styleSheet() == "":
@@ -99,7 +101,7 @@ class ConnectFour(QMainWindow):
                                 self.current_player = 3 - self.current_player
                             break
             else:
-                # If action is None or the column is full, choose a random legal move.
+                # If action is None or the column is full, choose a random legal move
                 available_columns = [col for col in range(7) if self.column_not_full(col)]
                 if available_columns:
                     action = random.choice(available_columns)

@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 class ConnectFourEnv(gym.Env):
     def __init__(self):
+        # Initialize the Connect Four board
         self.board = np.zeros((6, 7), dtype=np.float32)
         self.current_player = 1
         self.winner = None
@@ -19,6 +20,7 @@ class ConnectFourEnv(gym.Env):
         self.observation_space = gym.spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.float32)
 
     def reset(self):
+        # Reset the environment to its initial state
         self.board = np.zeros((6, 7), dtype=np.float32)
         self.current_player = 1
         self.winner = None
@@ -53,6 +55,7 @@ class ConnectFourEnv(gym.Env):
         return self.board, reward, done, {}
 
     def render(self):
+        # Print the current state of the board
         print(self.board)
 
     def get_next_open_row(self, col):
@@ -104,9 +107,11 @@ class ExperienceReplayBuffer:
         self.buffer = deque(maxlen=capacity)
 
     def add(self, experience):
+        # Add an experience to the buffer
         self.buffer.append(experience)
 
     def sample(self, batch_size):
+        # Sample a batch of experiences from the buffer
         return random.sample(self.buffer, batch_size)
 
 # Define the DQN agent
@@ -124,12 +129,11 @@ class DQNAgent:
         self.loss_fn = nn.MSELoss()
 
     def select_action(self, state, epsilon):
-        # Find available columns (not full)
+        # Select an action using an epsilon-greedy strategy
         available_columns = [col for col in range(7) if self.env.get_next_open_row(col) is not None]
 
         if not available_columns:
-            # All columns are full, indicating a draw or game over
-            return -1  # You can choose a special value to indicate a draw
+            return -1  # All columns are full, indicating a draw or game over
 
         if random.random() < epsilon:
             return random.choice(available_columns)
@@ -138,14 +142,15 @@ class DQNAgent:
         with torch.no_grad():
             q_values = self.model(state)
 
-        # Choose the action with the highest Q-value among available columns
         available_q_values = [q_values[0][col] for col in available_columns]
-        return available_columns[torch.argmax(torch.stack(available_q_values)).item()]
+        chosen_action = available_columns[torch.argmax(torch.stack(available_q_values)).item()]
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.1, epsilon_decay=0.995):
+        return chosen_action
+
+    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.1, epsilon_decay=0.999):
         epsilon = epsilon_start
 
-        for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm
+        for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm for progress tracking
             state = self.env.reset()
             total_reward = 0
 
@@ -165,18 +170,15 @@ class DQNAgent:
                     experiences = self.buffer.sample(self.batch_size)
                     states, actions, rewards, next_states, dones = zip(*experiences)
 
-                    # Convert the list of numpy arrays to a single numpy array
                     states = np.array(states, dtype=np.single)
                     next_states = np.array(next_states, dtype=np.single)
                     rewards = np.array(rewards, dtype=np.single)
                     actions = np.array(actions, dtype=np.short)
                     dones = np.array(dones, dtype=np.single)
 
-                    # Convert the numpy arrays to PyTorch tensors
                     states = torch.tensor(states, dtype=torch.float)
                     next_states = torch.tensor(next_states, dtype=torch.float)
                     rewards = torch.tensor(rewards, dtype=torch.float)
-                    # Convert the 'actions' tensor to int64 data type
                     actions = torch.tensor(actions, dtype=torch.int64)
                     dones = torch.tensor(dones, dtype=torch.float)
 
@@ -195,8 +197,7 @@ class DQNAgent:
                     self.target_model.load_state_dict(self.model.state_dict())
 
             epsilon = max(epsilon_final, epsilon * epsilon_decay)
-            tqdm.write(f"Episode: {episode}, Total Reward: {total_reward}, Epsilon: {epsilon:.2f}")  # Use tqdm.write to update progress
-
+            tqdm.write(f"Episode: {episode}, Total Reward: {total_reward}, Epsilon: {epsilon:.2f}")
 
 # Main function
 if __name__ == '__main__':
@@ -204,10 +205,9 @@ if __name__ == '__main__':
     dqn_agent = DQNAgent(env)
 
     # Train the DQN agent
-    num_episodes = 10000
+    num_episodes = 50000
     dqn_agent.train(num_episodes=num_episodes)
 
-   
     # Save the DQN agent's state after training
     torch.save({
         'model_state_dict': dqn_agent.model.state_dict(),
