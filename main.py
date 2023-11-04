@@ -70,12 +70,14 @@ class ConnectFour(QMainWindow):
 
     def on_click(self, row, col):
         if not self.game_over:
-            # Find the lowest available row in the selected column
             for r in range(5, -1, -1):
                 if self.board[r][col].styleSheet() == "":
                     self.board[r][col].setStyleSheet('background-color: red;')
                     if self.check_win(r, col):
                         self.status_label.setText(f"Player 1 wins!")
+                        self.game_over = True
+                    elif self.check_draw():
+                        self.status_label.setText("It's a draw!")
                         self.game_over = True
                     else:
                         self.current_player = 3 - self.current_player
@@ -83,11 +85,11 @@ class ConnectFour(QMainWindow):
                             self.play_ai_turn()
                     break
 
+
     def play_ai_turn(self):
         if not self.game_over:
             action = self.dqn_agent.select_action(self.get_game_state(), epsilon=0.0)
             available_columns = [col for col in range(7) if self.column_not_full(col)]
-            print(action)
             
             if (action is not None) and (action in available_columns):  # Make sure the selected action is valid.
                 if self.column_not_full(action):
@@ -100,20 +102,7 @@ class ConnectFour(QMainWindow):
                             else:
                                 self.current_player = 3 - self.current_player
                             break
-            else:
-                # If action is None or the column is full, choose a random legal move
-                available_columns = [col for col in range(7) if self.column_not_full(col)]
-                if available_columns:
-                    action = random.choice(available_columns)
-                    for row in range(5, -1, -1):
-                        if self.board[row][action].styleSheet() == "":
-                            self.board[row][action].setStyleSheet('background-color: yellow;')
-                            if self.check_win(row, action):
-                                self.status_label.setText(f"AI wins!")
-                                self.game_over = True
-                            else:
-                                self.current_player = 3 - self.current_player
-                            break
+                        
 
     def column_not_full(self, column):
         return self.board[0][column].styleSheet() == ""
@@ -149,6 +138,12 @@ class ConnectFour(QMainWindow):
                 return True
         return False
     
+    def check_draw(self):
+        for col in range(7):
+            if self.column_not_full(col):
+                return False
+        return True
+
     def load_agent(self):
         try:
             checkpoint = torch.load('saved_agents/dqn_agent_after_training.pth')

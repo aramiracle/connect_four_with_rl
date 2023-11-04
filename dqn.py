@@ -37,19 +37,22 @@ class ConnectFourEnv(gym.Env):
 
             if self.check_win(row, action):
                 self.winner = self.current_player
-                reward = self.max_moves
+                if self.winner == 1:
+                    reward = 1
+                else:
+                    reward = 0
                 done = True
             elif np.count_nonzero(self.board) == self.max_moves:
-                reward = self.max_moves
+                reward = 1
                 done = True
             else:
-                reward = -1
+                reward = -1/self.max_moves
                 done = False
 
             self.current_player = 3 - self.current_player  # Switch players
         else:
             # Handle the case where the column is already full
-            reward = -self.max_moves
+            reward = -50
             done = False
 
         return self.board, reward, done, {}
@@ -60,7 +63,7 @@ class ConnectFourEnv(gym.Env):
 
     def get_next_open_row(self, col):
         for r in range(5, -1, -1):
-            if self.board[r, col] == 0:
+            if self.board[r][col] == 0:
                 return r
 
     def check_win(self, row, col):
@@ -117,7 +120,7 @@ class ExperienceReplayBuffer:
 # Define the DQN agent
 
 class DQNAgent:
-    def __init__(self, env, buffer_capacity=10000, batch_size=64, target_update_frequency=10):
+    def __init__(self, env, buffer_capacity=100000, batch_size=64, target_update_frequency=10):
         self.env = env
         self.model = DQN()
         self.target_model = DQN()
@@ -129,6 +132,9 @@ class DQNAgent:
         self.loss_fn = nn.MSELoss()
 
     def select_action(self, state, epsilon):
+        # Update the environment state to match the provided state
+        self.env.board = state
+
         # Select an action using an epsilon-greedy strategy
         available_columns = [col for col in range(7) if self.env.get_next_open_row(col) is not None]
 
@@ -144,10 +150,10 @@ class DQNAgent:
 
         available_q_values = [q_values[0][col] for col in available_columns]
         chosen_action = available_columns[torch.argmax(torch.stack(available_q_values)).item()]
-
+        
         return chosen_action
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.1, epsilon_decay=0.999):
+    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0.9995):
         epsilon = epsilon_start
 
         for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm for progress tracking
@@ -197,7 +203,7 @@ class DQNAgent:
                     self.target_model.load_state_dict(self.model.state_dict())
 
             epsilon = max(epsilon_final, epsilon * epsilon_decay)
-            tqdm.write(f"Episode: {episode}, Total Reward: {total_reward}, Epsilon: {epsilon:.2f}")
+            tqdm.write(f"Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
 
 # Main function
 if __name__ == '__main__':
@@ -205,7 +211,7 @@ if __name__ == '__main__':
     dqn_agent = DQNAgent(env)
 
     # Train the DQN agent
-    num_episodes = 50000
+    num_episodes = 100000
     dqn_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training
