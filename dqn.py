@@ -2,6 +2,7 @@ import numpy as np
 import random
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import gym
 from collections import namedtuple, deque
@@ -26,7 +27,7 @@ class ConnectFourEnv(gym.Env):
         self.winner = None
         return self.board
 
-    def step(self, action):
+    def step(self, action, total_reward):
         if self.winner is not None:
             return self.board, 0, True, {}
 
@@ -38,21 +39,21 @@ class ConnectFourEnv(gym.Env):
             if self.check_win(row, action):
                 self.winner = self.current_player
                 if self.winner == 1:
-                    reward = 1
+                    reward = 2
                 else:
-                    reward = 0
+                    reward = -2 * total_reward - 1 # If lose in longer game reward more and also reward < 0
                 done = True
             elif np.count_nonzero(self.board) == self.max_moves:
                 reward = 1
                 done = True
             else:
-                reward = -1/self.max_moves
+                reward = -1/self.max_moves # Forcing to win faster
                 done = False
 
             self.current_player = 3 - self.current_player  # Switch players
         else:
             # Handle the case where the column is already full
-            reward = -50
+            reward = -1
             done = False
 
         return self.board, reward, done, {}
@@ -91,16 +92,22 @@ class ConnectFourEnv(gym.Env):
 class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
-        self.fc1 = nn.Linear(6 * 7, 128)
-        self.fc2 = nn.Linear(128, 128)
-        self.fc3 = nn.Linear(128, 7)
+        self.fc1 = nn.Linear(6 * 7 * 3, 256)  # Multiply the input size by 2 for one-hot encoding
+        self.fc2 = nn.Linear(256, 512)
+        self.fc3 = nn.Linear(512, 256)
+        self.fc4 = nn.Linear(256, 128)
+        self.fc5 = nn.Linear(128, 7)
 
     def forward(self, x):
+        # One-hot encode the input state
         x = x.view(-1, 6 * 7)
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        return self.fc3(x)
-
+        x = F.one_hot(x.to(torch.int64), num_classes=3).to(torch.float32)  # One-hot encode with 3 classes (0, 1, 2)
+        x = x.view(-1, 6 * 7 * 3)  # Flatten the one-hot encoding
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        return self.fc5(x)
 # Implement experience replay buffer
 
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
@@ -153,7 +160,7 @@ class DQNAgent:
         
         return chosen_action
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0.9995):
+    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.9995):
         epsilon = epsilon_start
 
         for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm for progress tracking
@@ -163,7 +170,7 @@ class DQNAgent:
             for step in range(self.env.max_moves):
                 action = self.select_action(state, epsilon)
 
-                next_state, reward, done, _ = self.env.step(action)
+                next_state, reward, done, _ = self.env.step(action , total_reward)
                 self.buffer.add(Experience(state, action, reward, next_state, done))
 
                 state = next_state
@@ -211,7 +218,7 @@ if __name__ == '__main__':
     dqn_agent = DQNAgent(env)
 
     # Train the DQN agent
-    num_episodes = 100000
+    num_episodes = 5000
     dqn_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training
