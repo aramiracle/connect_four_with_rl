@@ -173,7 +173,6 @@ class DQNAgent:
         for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm for progress tracking
             state = self.env.reset()
             player1_total_reward = 0
-            player2_total_reward = 0
             current_player = 1  # Start with player 1
 
             for step in range(self.env.max_moves):
@@ -185,23 +184,21 @@ class DQNAgent:
                 if done:
                     if self.env.winner == 1:
                         player1_reward = 1  # Win reward for player 1
-                        player2_reward = -2 * player2_total_reward - 1  # Loss penalty for player 2
                         print('Player 1 wins')
                     elif self.env.winner == 2:
                         player1_reward = -2 * player1_total_reward - 1  # Loss penalty for player 1
-                        player2_reward = 1  # Win reward for player 2
                         print('Player 2 wins')
                     else:  # It's a draw
                         player1_reward = -player1_total_reward
-                        player2_reward = -player2_total_reward
                         print('Game is drawn!')
                 else:
                     # Small negative reward for each move to encourage winning quickly
                     player1_reward = -1 / self.env.max_moves if current_player == 1 else 0
-                    player2_reward = -1 / self.env.max_moves if current_player == 2 else 0
 
                 player1_total_reward += player1_reward
-                player2_total_reward += player2_reward
+                
+                if done:
+                    player2_total_reward = - player1_total_reward
 
                 self.buffer.add(Experience(state, action, reward, next_state, done))
 
