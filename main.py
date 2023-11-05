@@ -112,23 +112,25 @@ class ConnectFour(QMainWindow):
     def play_ai_turn(self):
         if not self.game_over:
             game_state = self.get_game_state()
-            # Removed the current_player keyword argument
+            print(game_state)
             action = self.dqn_agent.select_action(game_state, epsilon=0.0)
-            available_columns = [col for col in range(7) if self.column_not_full(col)]
-
-            if (action is not None) and (action in available_columns):  # Make sure the selected action is valid.
-                if self.column_not_full(action):
-                    for row in range(5, -1, -1):
-                        if self.board[row][action].styleSheet() == "":
-                            self.board[row][action].setStyleSheet('background-color: yellow;')
-                            if self.check_win(row, action):
-                                self.status_label.setText(f"AI wins!")
-                                self.game_over = True
-                            else:
-                                self.current_player = 3 - self.current_player
-                            break
-
-
+            # No need to get available columns again since select_action should only return valid actions.
+            
+            # Make sure the selected action is valid.
+            if action is not None and self.column_not_full(action):  
+                for row in range(5, -1, -1):
+                    if self.board[row][action].styleSheet() == "":
+                        self.board[row][action].setStyleSheet('background-color: yellow;')
+                        if self.check_win(row, action):
+                            self.status_label.setText(f"AI wins!")
+                            self.game_over = True
+                        else:
+                            self.current_player = 3 - self.current_player
+                        break
+            else:
+                # If AI selects an invalid move, you could either choose a valid move
+                # or simply print an error message and skip the turn.
+                print(f"Invalid action selected by AI: {action}")
                         
 
     def column_not_full(self, column):

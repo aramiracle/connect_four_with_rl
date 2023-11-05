@@ -5,7 +5,8 @@ from dqn import ConnectFourEnv, DQNAgent
 
 # Define the random bot's action selection function
 def random_bot_action(env):
-    available_actions = [col for col in range(env.action_space.n) if env.get_next_open_row(col) is not None]
+    # Check the top row of the board to find available columns
+    available_actions = [col for col in range(env.action_space.n) if env.board[0][col] == 0]
     return random.choice(available_actions) if available_actions else None
 
 # Define the game simulation function
@@ -19,6 +20,10 @@ def simulate_game(env, ai_agent, ai_starts=True):
         # Random bot's turn
         else:
             action = random_bot_action(env)
+
+        # If there are no available actions, it's a draw.
+        if action is None:
+            return None
 
         # Take the action
         state, reward, done, _ = env.step(action)
@@ -62,7 +67,7 @@ if __name__ == '__main__':
     ai_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Test the AI agent against the random bot
-    ai_first_player_wins, ai_second_player_wins, draws = test_ai_vs_random(env, ai_agent, num_games=2000)
+    ai_first_player_wins, ai_second_player_wins, draws = test_ai_vs_random(env, ai_agent, num_games=20000)
     print(f"AI won as first player: {ai_first_player_wins} times.")
     print(f"AI won as second player: {ai_second_player_wins} times.")
     print(f"Number of draws: {draws}.")

@@ -30,43 +30,36 @@ class ConnectFourEnv(gym.Env):
         # Check if game is already over
         if self.winner is not None:
             return self.board, 0, True, {}
-
-        row = self.get_next_open_row(action)
         
-        # Make the move
-        if row is not None:
-            self.board[row, action] = self.current_player
-            
-            # Check for win or tie
-            if self.check_win(row, action):
-                self.winner = self.current_player
-                reward = 1.0
-                done = True
-            elif torch.count_nonzero(self.board) == self.max_moves:
-                reward = 0
-                done = True
-            else:
-                reward = -1 / self.max_moves
-                done = False
-
-            self.current_player = 3 - self.current_player  # Switch players
+        # Find the next open row in the column, if available
+        for row in range(5, -1, -1):
+            if self.board[row][action] == 0:
+                self.board[row][action] = self.current_player
+                break
         else:
-            # Invalid move (column full)
-            reward = -1
+            # If the loop completes without a break, the column is full
+            return self.board, -1, False, {}
+
+        # Check for win or tie
+        if self.check_win(row, action):
+            self.winner = self.current_player
+            reward = 1.0
+            done = True
+        elif torch.count_nonzero(self.board) == self.max_moves:
+            reward = (self.max_moves - 1) / self.max_moves
+            done = True
+        else:
+            reward = -1 / self.max_moves
             done = False
 
+        self.current_player = 3 - self.current_player  # Switch players
         return self.board, reward, done, {}
+
 
     def render(self, mode='human'):
         # Print the current state of the board
         print(self.board)
 
-    def get_next_open_row(self, col):
-        # Find the next open row in the given column
-        for r in range(5, -1, -1):
-            if self.board[r, col] == 0:
-                return r
-        return None
 
     def check_win(self, row, col):
         # Check if the last move was a winning move
@@ -138,26 +131,29 @@ class DQNAgent:
     def select_action(self, state, epsilon):
         # Adjust the state for the current player's perspective
         state = state * (2 * (self.env.current_player == 1) - 1)
-
-        # Select an action using an epsilon-greedy strategy
-        available_columns = [col for col in range(7) if self.env.get_next_open_row(col) is not None]
         
+        # Directly check which columns are not full
+        available_columns = [col for col in range(7) if state[0][col] == 0]
+
         if not available_columns:
-            return -1  # All columns are full, indicating a draw or game over
+            return None  # No valid moves available
 
         if random.random() < epsilon:
             return random.choice(available_columns)
 
-        state = torch.tensor(state, dtype=torch.float32)
+        state_tensor = torch.tensor(state, dtype=torch.float32)
         with torch.no_grad():
-            q_values = self.model(state)
+            q_values = self.model(state_tensor)
 
-        available_q_values = [q_values[0][col] for col in available_columns]
-        chosen_action = available_columns[torch.argmax(torch.stack(available_q_values)).item()]
+        # Set the q_values for full columns to negative infinity
+        q_values_clone = q_values.clone()
+        q_values_clone[0, [col for col in range(7) if col not in available_columns]] = -float('inf')
 
+        chosen_action = torch.argmax(q_values_clone).item()
         return chosen_action
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.1, epsilon_decay=0.9995):
+
+    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.9995):
         epsilon = epsilon_start
 
         for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm for progress tracking
