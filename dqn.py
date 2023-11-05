@@ -27,36 +27,41 @@ class ConnectFourEnv(gym.Env):
         self.winner = None
         return self.board
 
-    def step(self, action, total_reward):
+    def step(self, action):
+        # Check if game is already over
         if self.winner is not None:
-            return self.board, 0, True, {}
+            raise ValueError("Game is already over.")
+        
+        # Check if the action is valid (column is not full)
+        if self.board[0][action] != 0:
+            raise ValueError("Column is full.")
 
+        # Apply the action
         row = self.get_next_open_row(action)
+        self.board[row, action] = self.current_player
 
-        if row is not None:
-            self.board[row, action] = self.current_player
-
-            if self.check_win(row, action):
-                self.winner = self.current_player
-                if self.winner == 1:
-                    reward = 2
-                else:
-                    reward = -2 * total_reward - 1 # If lose in longer game reward more and also reward < 0
-                done = True
-            elif np.count_nonzero(self.board) == self.max_moves:
-                reward = 1
-                done = True
-            else:
-                reward = -1/self.max_moves # Forcing to win faster
-                done = False
-
-            self.current_player = 3 - self.current_player  # Switch players
+        # Check for a win
+        if self.check_win(row, action):
+            self.winner = self.current_player
+            # The reward for winning or losing will be handled outside of the step function
+            reward = 1 if self.current_player == 1 else -1
+        elif np.count_nonzero(self.board) == self.max_moves:
+            # The game is a draw
+            self.winner = 0  # No winner in the case of a draw
+            reward = 0
         else:
-            # Handle the case where the column is already full
-            reward = -1
-            done = False
+            # The game continues
+            reward = 0
 
-        return self.board, reward, done, {}
+        # Prepare the return values
+        done = self.winner is not None
+        next_state = self.board.copy()
+        info = {'winner': self.winner}
+
+        # Switch players
+        self.current_player = 3 - self.current_player
+
+        return next_state, reward, done, info
 
     def render(self):
         # Print the current state of the board
@@ -162,23 +167,50 @@ class DQNAgent:
 
     def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.9995):
         epsilon = epsilon_start
+        player1_rewards = []
+        player2_rewards = []
 
         for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm for progress tracking
             state = self.env.reset()
-            total_reward = 0
+            player1_total_reward = 0
+            player2_total_reward = 0
+            current_player = 1  # Start with player 1
 
             for step in range(self.env.max_moves):
                 action = self.select_action(state, epsilon)
 
-                next_state, reward, done, _ = self.env.step(action , total_reward)
+                next_state, reward, done, _ = self.env.step(action)
+                
+                # Check if the game has ended and assign rewards accordingly
+                if done:
+                    if self.env.winner == 1:
+                        player1_reward = 1  # Win reward for player 1
+                        player2_reward = -2 * player2_total_reward - 1  # Loss penalty for player 2
+                        print('Player 1 wins')
+                    elif self.env.winner == 2:
+                        player1_reward = -2 * player1_total_reward - 1  # Loss penalty for player 1
+                        player2_reward = 1  # Win reward for player 2
+                        print('Player 2 wins')
+                    else:  # It's a draw
+                        player1_reward = -player1_total_reward
+                        player2_reward = -player2_total_reward
+                        print('Game is drawn!')
+                else:
+                    # Small negative reward for each move to encourage winning quickly
+                    player1_reward = -1 / self.env.max_moves if current_player == 1 else 0
+                    player2_reward = -1 / self.env.max_moves if current_player == 2 else 0
+
+                player1_total_reward += player1_reward
+                player2_total_reward += player2_reward
+
                 self.buffer.add(Experience(state, action, reward, next_state, done))
 
                 state = next_state
-                total_reward += reward
 
                 if done:
                     break
 
+                # Update model
                 if len(self.buffer.buffer) >= self.batch_size:
                     experiences = self.buffer.sample(self.batch_size)
                     states, actions, rewards, next_states, dones = zip(*experiences)
@@ -206,19 +238,24 @@ class DQNAgent:
                     loss.backward()
                     self.optimizer.step()
 
-                if step % self.target_update_frequency == 0:
-                    self.target_model.load_state_dict(self.model.state_dict())
+                # Switch current player after each action
+                current_player = 3 - current_player
+
+            # Log progress for both players
+            tqdm.write(f"Episode: {episode}, Player 1 Total Reward: {player1_total_reward:.4f}, Player 2 Total Reward: {player2_total_reward:.4f}, Epsilon: {epsilon:.2f}")
 
             epsilon = max(epsilon_final, epsilon * epsilon_decay)
-            tqdm.write(f"Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
 
+        # Return the rewards for analysis if needed
+        return player1_rewards, player2_rewards
+    
 # Main function
 if __name__ == '__main__':
     env = ConnectFourEnv()
     dqn_agent = DQNAgent(env)
 
     # Train the DQN agent
-    num_episodes = 5000
+    num_episodes = 3000
     dqn_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training

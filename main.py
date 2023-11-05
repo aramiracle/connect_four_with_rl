@@ -1,8 +1,8 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGridLayout, QWidget, QLineEdit, QHBoxLayout
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGridLayout, QWidget, QRadioButton, QHBoxLayout
+from dqn import DQNAgent, ConnectFourEnv
+from functools import partial
 from PyQt6.QtCore import Qt
-from dqn import DQNAgent, ConnectFourEnv  # Import DQNAgent and ConnectFourEnv from your original code
-import random
 import torch
 
 class ConnectFour(QMainWindow):
@@ -11,7 +11,7 @@ class ConnectFour(QMainWindow):
         self.setWindowTitle("Connect Four")
         self.setGeometry(100, 100, 600, 600)
         self.initUI()
-        self.dqn_agent = DQNAgent(ConnectFourEnv())
+        self.dqn_agent = DQNAgent(ConnectFourEnv())  # Initialize the DQNAgent
         self.current_player = 1
         self.game_over = False
         self.game_state_history = []
@@ -27,15 +27,22 @@ class ConnectFour(QMainWindow):
             for col in range(7):
                 button = QPushButton()
                 button.setFixedSize(80, 80)
-                # Connect the button click event to the on_click method with row and col arguments
-                button.clicked.connect(lambda _, row=row, col=col: self.on_click(row, col))
+                # Using partial to ensure the row and col values are captured correctly
+                button.clicked.connect(partial(self.on_click, row, col))
                 self.grid.addWidget(button, row, col)
                 self.board[row][col] = button
 
         self.status_label = QLabel()
         self.grid.addWidget(self.status_label, 6, 0, 1, 7, alignment=Qt.AlignmentFlag.AlignCenter)
 
-        button_row_layout = QHBoxLayout()  # Create a horizontal layout for buttons and input fields
+        button_row_layout = QHBoxLayout()
+
+        self.player1_button = QRadioButton("Start as Player 1")
+        self.player2_button = QRadioButton("Start as Player 2")
+        self.player1_button.toggled.connect(self.select_player)
+        self.player2_button.toggled.connect(self.select_player)
+        button_row_layout.addWidget(self.player1_button)
+        button_row_layout.addWidget(self.player2_button)
 
         self.load_button = QPushButton("Load Agent")
         self.load_button.clicked.connect(self.load_agent)
@@ -46,17 +53,33 @@ class ConnectFour(QMainWindow):
         button_row_layout.addWidget(self.play_button)
         self.play_button.setDisabled(True)
 
-        self.grid.addLayout(button_row_layout, 7, 0, 1, 7)  # Add the button_row_layout in row 7
+        self.grid.addLayout(button_row_layout, 7, 0, 1, 7)
+
+    def select_player(self):
+        if self.player1_button.isChecked():
+            self.current_player = 1
+        else:
+            self.current_player = 2
+        self.play_button.setDisabled(False)
 
     def start_game(self):
         self.play_button.setDisabled(True)
-        self.current_player = 1
         self.game_over = False
         self.status_label.setText("")
         self.game_state_history = []  # Clear the game state history
         for row in range(6):
             for col in range(7):
                 self.board[row][col].setStyleSheet("")
+
+        # Set the current player based on the selected radio button
+        if self.player1_button.isChecked():
+            self.current_player = 1
+        else:
+            self.current_player = 2
+
+        # If the AI is starting the game, play its turn
+        if self.current_player == 2:
+            self.play_ai_turn()
 
     def update_board_from_game_state(self, game_state):
         for row in range(6):
@@ -88,9 +111,11 @@ class ConnectFour(QMainWindow):
 
     def play_ai_turn(self):
         if not self.game_over:
-            action = self.dqn_agent.select_action(self.get_game_state(), epsilon=0.0)
+            game_state = self.get_game_state()
+            # Removed the current_player keyword argument
+            action = self.dqn_agent.select_action(game_state, epsilon=0.0)
             available_columns = [col for col in range(7) if self.column_not_full(col)]
-            
+
             if (action is not None) and (action in available_columns):  # Make sure the selected action is valid.
                 if self.column_not_full(action):
                     for row in range(5, -1, -1):
@@ -102,6 +127,8 @@ class ConnectFour(QMainWindow):
                             else:
                                 self.current_player = 3 - self.current_player
                             break
+
+
                         
 
     def column_not_full(self, column):
@@ -146,19 +173,17 @@ class ConnectFour(QMainWindow):
 
     def load_agent(self):
         try:
+            # Make sure the file path is correct and accessible
             checkpoint = torch.load('saved_agents/dqn_agent_after_training.pth')
             self.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
             self.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
             self.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.status_label.setText("Agent loaded successfully.")
-
-            # Enable the "Play Game" button
             self.play_button.setDisabled(False)
-
         except FileNotFoundError:
             self.status_label.setText("Agent file not found.")
         except Exception as e:
-            self.status_label.setText("Failed to load agent: " + str(e))
+            self.status_label.setText(f"Failed to load agent: {str(e)}")
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
