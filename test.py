@@ -1,7 +1,7 @@
 import torch
 import random
 from tqdm import tqdm
-from dqn import ConnectFourEnv, DQNAgent
+from upgraded_dqn import ConnectFourEnv, DQNAgent
 
 # Define the random bot's action selection function
 def random_bot_action(env):
