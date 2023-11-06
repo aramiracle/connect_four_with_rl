@@ -208,7 +208,7 @@ if __name__ == '__main__':
     dqn_agent = DQNAgent(env)
 
     # Train the DQN agent
-    num_episodes = 100000
+    num_episodes = 10000
     dqn_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training
