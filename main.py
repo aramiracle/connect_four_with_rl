@@ -112,7 +112,6 @@ class ConnectFour(QMainWindow):
     def play_ai_turn(self):
         if not self.game_over:
             game_state = self.get_game_state()
-            print(game_state)
             action = self.dqn_agent.select_action(game_state, epsilon=0.0)
             # No need to get available columns again since select_action should only return valid actions.
             
