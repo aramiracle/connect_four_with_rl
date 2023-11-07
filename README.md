@@ -47,4 +47,33 @@ Key Features:
 - Provides insights into the AI's ability to win as both the first and second player
 - Helps to debug and improve the agent's strategy after training
 
+### `upgraded_dqn.py`
+
+This script provides an improved version of the DQN model for the Connect Four game. Key enhancements include:
+
+- **Convolutional Neural Network Architecture**: Uses convolutional layers to process the game state, capturing spatial hierarchies.
+- **Dueling Network**: Implements a dueling architecture that separates the estimation of the value and advantage streams.
+- **Priority Experience Replay**: Enhances the replay mechanism to prioritize important experiences, which accelerates learning.
+- **Epsilon-Greedy Strategy**: Employs an epsilon-greedy approach for action selection, balancing exploration and exploitation.
+- **Training and Updating**: Includes a comprehensive training loop with target network updates for stability.
+
+### `mct.py`
+
+This script introduces a Monte Carlo Tree Search (MCTS) agent for strategic gameplay:
+
+- **Monte Carlo Tree Search**: Implements MCTS, a search algorithm for making decisions in a game tree without requiring high computational costs.
+- **Node Expansion**: Expands the search tree based on random simulations and updates nodes with the outcomes.
+- **Exploration vs. Exploitation**: Uses the Upper Confidence Bound (UCB1) formula to balance between exploring new moves and exploiting known good ones.
+- **Backpropagation**: After each simulation, updates the node values and visit counts up the tree.
+
+### `gui.py`
+
+This script uses the PyQt6 framework to create a GUI for the Connect Four game:
+
+- **PyQt6 Framework**: Leverages PyQt6 to create a responsive and visually appealing user interface.
+- **Game Board Interface**: Presents a 6x7 grid of buttons that players can click to make a move.
+- **Game Logic**: Includes methods to handle the game logic such as player moves, win checks, and draw conditions.
+- **Status Updates**: Provides a status label on the GUI to inform players about the current game state or endgame results.
+
+
 Each script collaborates to create a complete Connect Four experience with a challenging AI opponent. Users can interact with the game, train the AI, and evaluate its gameplay, all through these Python scripts.
