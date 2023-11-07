@@ -28,7 +28,7 @@ class ConnectFour(QMainWindow):
             for col in range(7):
                 # Create a button for each cell in the grid
                 button = QPushButton()
-                button.setFixedSize(80, 80)
+                button.setFixedSize(100, 100)
                 # Connect the button's click event to the on_click method with row and col arguments
                 button.clicked.connect(lambda _, row=row, col=col: self.on_click(row, col))
                 self.grid.addWidget(button, row, col)
@@ -47,35 +47,44 @@ class ConnectFour(QMainWindow):
                 if self.check_win(r, col):
                     # If a player wins, display a message in the status label
                     self.status_label.setText(f"Player {self.current_player} wins!")
+                elif self.check_draw():
+                    self.status_label.setText("It's a draw!")
                 else:
                     # Switch to the next player's turn
                     self.current_player = 3 - self.current_player  # Switch players (1 to 2, 2 to 1)
-
-                    # After switching players, check for a draw (board is full)
-                    if all(self.board[0][i].styleSheet() for i in range(7)):
-                        self.status_label.setText("It's a draw!")
-
                 break
 
+    # Check if there's a winner
     def check_win(self, row, col):
+        # Check all directions for a win condition
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
         for dr, dc in directions:
-            count = 1
-            for i in range(1, 4):
-                r, c = row + dr * i, col + dc * i
-                if 0 <= r < 6 and 0 <= c < 7 and self.board[r][c].styleSheet() == self.board[row][col].styleSheet():
-                    count += 1
-                else:
-                    break
-            for i in range(1, 4):
-                r, c = row - dr * i, col - dc * i
-                if 0 <= r < 6 and 0 <= c < 7 and self.board[r][c].styleSheet() == self.board[row][col].styleSheet():
-                    count += 1
-                else:
-                    break
-            if count >= 4:
+            if self.count_aligned(row, col, dr, dc) >= 4:
                 return True
         return False
+
+    # Count consecutive pieces in a direction
+    def count_aligned(self, row, col, dr, dc):
+        count = 1
+        count += self.count_direction(row, col, dr, dc, 1)
+        count += self.count_direction(row, col, dr, dc, -1)
+        return count
+
+    # Count in a single direction
+    def count_direction(self, row, col, dr, dc, step):
+        count = 0
+        for i in range(1, 4):
+            r, c = row + dr * i * step, col + dc * i * step
+            if 0 <= r < 6 and 0 <= c < 7 and self.board[r][c].styleSheet() == self.board[row][col].styleSheet():
+                count += 1
+            else:
+                break
+        return count
+    
+    # Check for a draw condition
+    def check_draw(self):
+        return all(self.board[0][col].styleSheet() != "" for col in range(7))
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
