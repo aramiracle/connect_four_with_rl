@@ -89,7 +89,7 @@ class ConnectFour(QMainWindow):
             if self.board[r][col].styleSheet() == "":
                 self.board[r][col].setStyleSheet('background-color: red;')
                 if self.check_win(r, col):
-                    self.status_label.setText(f"Player 1 wins!")
+                    self.status_label.setText(f"Player wins!")
                     self.game_over = True
                 elif self.check_draw():
                     self.status_label.setText("It's a draw!")
@@ -112,6 +112,9 @@ class ConnectFour(QMainWindow):
                     self.board[row][action].setStyleSheet('background-color: yellow;')
                     if self.check_win(row, action):
                         self.status_label.setText(f"AI wins!")
+                        self.game_over = True
+                    elif self.check_draw():
+                        self.status_label.setText(f"It's a draw!")
                         self.game_over = True
                     else:
                         self.current_player = 3 - self.current_player
@@ -158,7 +161,7 @@ class ConnectFour(QMainWindow):
     
     # Check for a draw condition
     def check_draw(self):
-        return all(self.column_not_full(col) for col in range(7))
+        return all(self.board[0][col].styleSheet() != "" for col in range(7))
 
     # Load the trained DQN agent
     def load_agent(self):
