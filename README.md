@@ -79,9 +79,13 @@ Each script collaborates to create a complete Connect Four experience with a cha
 
 ## Installation
 
+By running this bash you install requirements
+
 ```
 pip install PyQt6 torch gymnasium numpy tqdm
 ```
 
 ## Usage
+
+You can train model with `dqn.py` and `upgraded_dqn.py` and play with it with `main.py` also you can test it against random bot by running `test.py`.
 
