@@ -163,7 +163,7 @@ class ConnectFour(QMainWindow):
     # Load the trained DQN agent
     def load_agent(self):
         try:
-            checkpoint = torch.load('saved_agents/dqn_agent_after_training.pth')
+            checkpoint = torch.load('saved_agents/upgraded_dqn_agent_after_training.pth')
             self.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
             self.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
             self.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])

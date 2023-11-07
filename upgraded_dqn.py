@@ -118,7 +118,6 @@ class DQNAgent:
         chosen_action = torch.argmax(q_values_clone).item()
         return chosen_action
 
-    # Training loop for the agent
     def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.9995):
         epsilon = epsilon_start  # Starting value for epsilon in epsilon-greedy strategy
 
@@ -134,44 +133,43 @@ class DQNAgent:
                 state = next_state  # Move to the next state
                 total_reward += reward  # Update the total reward
 
-                # Break the loop if the episode is finished
                 if done:
                     break
 
-                # Training step
                 if len(self.buffer.buffer) >= self.batch_size:
                     experiences, weights, indices = self.buffer.sample(self.batch_size)
-                    # Process the batch of experiences
                     states, actions, rewards, next_states, dones = zip(*experiences)
-                    
+
                     states = torch.stack(states)
                     next_states = torch.stack(next_states)
                     rewards = torch.tensor(rewards, dtype=torch.float32)
                     actions = torch.tensor(actions, dtype=torch.int64)
                     dones = torch.tensor(dones, dtype=torch.float32)
 
-                    # Calculate the Q-values and the target Q-values
-                    q_values = self.model(states)
-                    with torch.no_grad():
-                        best_actions = self.model(next_states).argmax(1)
-                        next_q_values = self.target_model(next_states).gather(1, best_actions.unsqueeze(1)).squeeze()
-                        target_q_values = rewards + 0.99 * next_q_values * (1 - dones)
+                    # Double DQN update
+                    current_q_values = self.model(states).gather(1, actions.unsqueeze(1)).squeeze()
+                    next_q_values_online = self.model(next_states)
+                    next_q_values_target = self.target_model(next_states)
+                    best_actions = next_q_values_online.argmax(1)
+                    next_q_values = next_q_values_target.gather(1, best_actions.unsqueeze(1)).squeeze()
+                    target_q_values = rewards + 0.99 * next_q_values * (1 - dones)
 
-                    # Compute the loss and perform a gradient descent step
-                    losses = self.loss_fn(q_values.gather(1, actions.unsqueeze(1)), target_q_values.unsqueeze(1))
-                    loss = losses.mean()
+                    # Compute individual losses
+                    losses = self.loss_fn(current_q_values, target_q_values)
+                    # Detach losses and convert to numpy array for updating priorities
+                    losses_np = losses.detach().numpy()
+                    # Update the priorities in the replay buffer
+                    self.buffer.update_priorities(indices, losses_np)
+
+                    # Compute the mean loss for the gradient descent step
+                    loss = (losses * torch.tensor(weights, dtype=torch.float32)).mean()
                     self.optimizer.zero_grad()
                     loss.backward()
                     self.optimizer.step()
 
-                    # Update the priorities in the replay buffer
-                    self.buffer.update_priorities(indices, losses.detach().numpy())
-
-                # Update the target network periodically
                 if step % self.target_update_frequency == 0:
                     self.target_model.load_state_dict(self.model.state_dict())
 
-            # Update epsilon using the decay rate
             epsilon = max(epsilon_final, epsilon * epsilon_decay)
             tqdm.write(f"Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
 
@@ -189,4 +187,4 @@ if __name__ == '__main__':
         'model_state_dict': dqn_agent.model.state_dict(),
         'target_model_state_dict': dqn_agent.target_model.state_dict(),
         'optimizer_state_dict': dqn_agent.optimizer.state_dict(),
-    }, 'saved_agents/dqn_agent_after_training.pth')
+    }, 'saved_agents/upgraded_dqn_agent_after_training.pth')
