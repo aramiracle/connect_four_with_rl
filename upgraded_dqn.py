@@ -89,18 +89,18 @@ class DQN(nn.Module):
     def __init__(self):
         super(DQN, self).__init__()
         # Convolutional layers
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1)
-        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(1, 8, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
 
         # Dueling DQN with separate value and advantage streams
         self.value_stream = nn.Sequential(
-            nn.Linear(128 * 6 * 7, 256),
+            nn.Linear(32 * 6 * 7, 256),
             nn.ReLU(),
             nn.Linear(256, 1)
         )
         self.advantage_stream = nn.Sequential(
-            nn.Linear(128 * 6 * 7, 256),
+            nn.Linear(32 * 6 * 7, 256),
             nn.ReLU(),
             nn.Linear(256, 7)
         )
@@ -195,7 +195,7 @@ class DQNAgent:
         return chosen_action
 
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.999):
+    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.9995):
         epsilon = epsilon_start
 
         for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm for progress tracking
@@ -257,7 +257,7 @@ if __name__ == '__main__':
     dqn_agent = DQNAgent(env)
 
     # Train the DQN agent
-    num_episodes = 1000
+    num_episodes = 10000
     dqn_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training
