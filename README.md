@@ -96,7 +96,6 @@ For the standard DQN:
 
 ```
 python dqn.py
-
 ```
 or for using enhanced model:
 ```
