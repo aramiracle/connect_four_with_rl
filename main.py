@@ -1,6 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGridLayout, QWidget, QRadioButton, QHBoxLayout
-from upgraded_dqn import DQNAgent, ConnectFourEnv
+from dqn import DQNAgent, ConnectFourEnv
 from functools import partial
 from PyQt6.QtCore import Qt
 import torch
@@ -29,7 +29,7 @@ class ConnectFour(QMainWindow):
         for row in range(6):
             for col in range(7):
                 button = QPushButton()
-                button.setFixedSize(80, 80)
+                button.setFixedSize(100, 100)
                 button.clicked.connect(partial(self.on_click, row, col))
                 self.grid.addWidget(button, row, col)
                 self.board[row][col] = button
@@ -166,7 +166,7 @@ class ConnectFour(QMainWindow):
     # Load the trained DQN agent
     def load_agent(self):
         try:
-            checkpoint = torch.load('saved_agents/upgraded_dqn_agent_after_training.pth')
+            checkpoint = torch.load('saved_agents/dqn_agent_after_training.pth')
             self.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
             self.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
             self.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
