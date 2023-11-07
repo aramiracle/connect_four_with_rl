@@ -76,3 +76,12 @@ This script uses the PyQt6 framework to create a GUI for the Connect Four game:
 - **Game State Status Updates**: Provides a status label on the GUI to inform players about the current game state or endgame results.
 
 Each script collaborates to create a complete Connect Four experience with a challenging AI opponent. Users can interact with the game, train the AI, and evaluate its gameplay, all through these Python scripts.
+
+## Installation
+
+```
+pip install PyQt6 torch gymnasium numpy tqdm
+```
+
+## Usage
+
