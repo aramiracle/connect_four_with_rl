@@ -79,13 +79,41 @@ Each script collaborates to create a complete Connect Four experience with a cha
 
 ## Installation
 
-By running this bash you install requirements
+Ensure you have Python 3.6 or higher and pip installed on your system. To install the required libraries for the Connect Four AI, execute the following command in your terminal:
 
 ```
 pip install PyQt6 torch gymnasium numpy tqdm
 ```
+This command will install PyQt6 for the GUI, PyTorch for deep learning algorithms, Gym for the game environment, NumPy for numerical computations, and tqdm for progress bars during training and testing.
 
 ## Usage
 
-You can train model with `dqn.py` and `upgraded_dqn.py` and play with it with `main.py` also you can test it against random bot by running `test.py`.
+### Training the AI
 
+To train the AI model, run one of the following scripts depending on the version of DQN you want to use:
+
+For the standard DQN:
+
+```
+python dqn.py
+
+```
+or for using enhanced model:
+```
+python upgraded_dqn.py
+```
+
+### Playing Game with AI
+
+After training, you can start a game against the AI by executing:
+```
+python main.py
+```
+
+### Testing the AI
+
+To evaluate the AI's performance against a random bot, use:
+```
+python test.py
+```
+This script will simulate games and provide statistics on the AI's performance.
