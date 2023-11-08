@@ -1,7 +1,7 @@
 import torch
 import random
 from tqdm import tqdm
-from upgraded_dqn import DQNAgent
+from hybrid import HybridAgent
 from environment import ConnectFourEnv
 
 def random_bot_action(env):
@@ -15,7 +15,7 @@ def simulate_game(env, ai_agent, ai_starts=True):
     done = False
     while not done:
         if (ai_starts and env.current_player == 1) or (not ai_starts and env.current_player == 2):
-            action = ai_agent.select_action(state, epsilon=0)
+            action = ai_agent.select_action(state, use_mcts=False)
         else:
             action = random_bot_action(env)
         if action is None:
@@ -47,14 +47,14 @@ def test_ai_vs_random(env, ai_agent, num_games=1000):
 
 if __name__ == '__main__':
     env = ConnectFourEnv()
-    ai_agent = DQNAgent(env)
+    ai_agent = HybridAgent(env)
 
-    checkpoint = torch.load('saved_agents/upgraded_dqn_agent_after_training.pth')
-    ai_agent.model.load_state_dict(checkpoint['model_state_dict'])
-    ai_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
-    ai_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    checkpoint = torch.load('saved_agents/hybrid_agent_after_training.pth')
+    ai_agent.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
+    ai_agent.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
+    ai_agent.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-    ai_first_player_wins, ai_second_player_wins, draws = test_ai_vs_random(env, ai_agent, num_games=20000)
+    ai_first_player_wins, ai_second_player_wins, draws = test_ai_vs_random(env, ai_agent, num_games=200)
     print(f"AI won as first player: {ai_first_player_wins} times.")
     print(f"AI won as second player: {ai_second_player_wins} times.")
     print(f"Number of draws: {draws}.")

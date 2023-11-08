@@ -59,24 +59,53 @@ class ConnectFourEnv(gym.Env):
         # Display the board to the console
         print(self.board)
 
+    def is_terminal(self):
+        # Check if there's a win or a tie
+        for row in range(6):
+            for col in range(7):
+                if self.board[row, col] != 0 and self.check_win(row, col):
+                    return True
+        return np.count_nonzero(self.board) == self.max_moves
+
+    # Check if there's a winner
     def check_win(self, row, col):
-        # Check if the last move completed a line of four of the same player's pieces
+        current_player = self.board[row][col]
+        # Check all directions for a win condition
         directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
         for dr, dc in directions:
-            count = 1
-            # Check in each direction from the last piece placed
-            for i in range(1, 4):
-                r, c = row + dr * i, col + dc * i
-                if 0 <= r < 6 and 0 <= c < 7 and self.board[r, c] == self.board[row, col]:
-                    count += 1
-                else:
-                    break
-            for i in range(1, 4):
-                r, c = row - dr * i, col - dc * i
-                if 0 <= r < 6 and 0 <= c < 7 and self.board[r, c] == self.board[row, col]:
-                    count += 1
-                else:
-                    break
-            if count >= 4:
+            if self.count_aligned(row, col, dr, dc, current_player) >= 4:
                 return True
         return False
+
+    # Count consecutive pieces in a direction
+    def count_aligned(self, row, col, dr, dc, player):
+        count = 1
+        count += self.count_direction(row, col, dr, dc, 1, player)
+        count += self.count_direction(row, col, dr, dc, -1, player)
+        return count
+
+    # Count in a single direction
+    def count_direction(self, row, col, dr, dc, step, player):
+        count = 0
+        for i in range(1, 4):
+            r, c = row + dr * i * step, col + dc * i * step
+            if 0 <= r < 6 and 0 <= c < 7 and self.board[r][c] == player:
+                count += 1
+            else:
+                break
+        return count
+    
+    def get_result(self):
+        # If the game is terminal, determine if it is a win, loss, or draw
+        if self.is_terminal():
+            if self.winner == self.current_player:
+                return 1  # Current player won
+            elif self.winner is not None:
+                return -1  # Current player lost
+            else:
+                return 0  # Draw
+        else:
+            return None  # Game is still ongoing
+    
+    def get_valid_actions(self):
+        return [col for col in range(self.board.shape[1]) if self.board[0, col] == 0]

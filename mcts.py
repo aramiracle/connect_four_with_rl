@@ -1,196 +1,88 @@
-import numpy as np
 import random
 import math
-import gymnasium as gym
-from gymnasium import spaces
-
-class ConnectFourEnv(gym.Env):
-    def __init__(self):
-        self.board = None
-        self.current_player = 1
-        self.winner = None
-        self.max_moves = 42
-        self.action_space = spaces.Discrete(7)
-        self.observation_space = spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.float32)
-
-    def reset(self):
-        self.board = np.zeros((6, 7), dtype=np.float32)
-        self.current_player = 1
-        self.winner = None
-        return self.board
-
-    def step(self, action):
-        if self.winner is not None:
-            return self.board, 0, True, {}
-
-        row = self.get_next_open_row(action)
-
-        if row is not None:
-            self.board[row, action] = self.current_player
-
-            if self.check_win(row, action):
-                self.winner = self.current_player
-                reward = 1
-                done = True
-            elif np.count_nonzero(self.board) == self.max_moves:
-                reward = 0
-                done = True
-            else:
-                reward = 0
-                done = False
-
-            self.current_player = 3 - self.current_player  # Switch players
-        else:
-            # Handle the case where the column is already full
-            reward = 0
-            done = False
-
-        return self.board, reward, done, {}
-    
-    def is_terminal(self, state):
-        return self.check_win(state) or np.count_nonzero(state) == self.max_moves
-
-    def check_win(self, state):
-        for row in range(6):
-            for col in range(7):
-                if state[row, col] != 0:
-                    if self.check_win_at_position(state, row, col):
-                        return True
-        return False
-
-    def check_win_at_position(self, state, row, col):
-        # This method checks for a win starting from a specific position (row, col)
-        directions = [(1, 0), (0, 1), (1, 1), (1, -1)]
-        for dr, dc in directions:
-            count = 1
-            for i in range(1, 4):
-                r, c = row + dr * i, col + dc * i
-                if 0 <= r < 6 and 0 <= c < 7 and state[r, c] == state[row, col]:
-                    count += 1
-                else:
-                    break
-            for i in range(1, 4):
-                r, c = row - dr * i, col - dc * i
-                if 0 <= r < 6 and 0 <= c < 7 and state[r, c] == state[row, col]:
-                    count += 1
-                else:
-                    break
-            if count >= 4:
-                return True
-        return False
-
-    def render(self):
-        print(self.board)
-
-    def get_next_open_row(self, col):
-        for r in range(5, -1, -1):
-            if self.board[r, col] == 0:
-                return r
-
-    def get_result(self, state):
-        if self.check_win(state):
-            if self.winner == 1:
-                return 1.0
-            elif self.winner == 2:
-                return -1.0
-        return 0.0  # The game is a draw
+import copy
+from environment import ConnectFourEnv  # Assuming environment.py contains this class
 
 class MCTSAgent:
-    def __init__(self, env, exploration_weight=1.0):
+    def __init__(self, env, dqn_model=None, exploration_weight=1.0):
         self.env = env
+        self.dqn_model = dqn_model
         self.exploration_weight = exploration_weight
 
-    def select_action(self, state, num_simulations):
-        root = Node(state)
-
+    def select_action(self, num_simulations):
+        root = Node(self.env)  # Use the agent's environment
         for _ in range(num_simulations):
             node = self.select(root)
-            result = self.rollout(node.state)
-            self.backpropagate(node, result)
-
-        best_action = self.get_best_action(root)
-        return best_action
-
-    def select(self, node):
-        while node.children:
-            if not all(child.visits for child in node.children):
-                return self.expand(node)
-            node = self.get_best_child(node)
-        return node
+            reward = self.rollout(node.env)  # Use the node's environment copy
+            self.backpropagate(node, reward)
+        return self.get_best_action(root)
 
     def expand(self, node):
-        actions = self.get_untried_actions(node.state)
-        if actions:
-            action = random.choice(actions)
-            new_state = self.apply_action(node.state, action)
-            child = Node(new_state, action, parent=node)
-            node.children.append(child)
-            return child
-        else:
-            return self.get_best_child(node)
+        actions = node.env.get_valid_actions()
+        action = random.choice(actions)
+        new_env = copy.deepcopy(self.env)
+        new_env.step(action)
+        child_node = Node(new_env, parent=node, action=action)
+        node.children.append(child_node)
+        return child_node
 
-    def get_untried_actions(self, state):
-        actions = []
-        for col in range(state.shape[1]):
-            if state[0, col] == 0:
-                actions.append(col)
-        return actions
-
-    def apply_action(self, state, action):
-        new_state = state.copy()
-        for row in range(state.shape[0] - 1, -1, -1):
-            if new_state[row, action] == 0:
-                new_state[row, action] = self.env.current_player
-                break
-        return new_state
+    def select(self, node):
+        while not node.is_terminal():
+            if not node.children:
+                # If there are no children, this means we need to expand this node
+                return self.expand(node)
+            if not all(child.visits for child in node.children):
+                # If there are children but not all have been visited, expand one of the unvisited children
+                return self.expand(node)
+            else:
+                # All children have been visited, get the best child
+                node = self.get_best_child(node)
+        return node
 
     def get_best_child(self, node):
-        children = node.children
-        best_child = max(children, key=lambda child: child.value / (child.visits + 1e-6)
-                        + self.exploration_weight * math.sqrt(math.log(node.visits + 1) / (child.visits + 1e-6))
-                        )
-        return best_child
+        # Make sure there are children before calling max
+        if node.children:
+            return max(node.children, key=lambda child: child.total_reward / child.visits +
+                    self.exploration_weight * math.sqrt(2 * math.log(node.visits) / child.visits))
+        else:
+            # If there are no children, then this shouldn't be called, but you might return None or raise an exception
+            return None
 
-    def rollout(self, state):
-        while not self.env.is_terminal(state):
-            actions = self.get_untried_actions(state)
-            if actions:
-                action = random.choice(actions)
-                state = self.apply_action(state, action)
-            else:
-                break
-        return self.env.get_result(state)
+    def rollout(self, env):
+        temp_env = copy.deepcopy(env)
+        while not temp_env.is_terminal():
+            action = random.choice(temp_env.get_valid_actions())
+            temp_env.step(action)
+        return temp_env.get_result()
 
-    def backpropagate(self, node, result):
+    def backpropagate(self, node, reward):
         while node is not None:
             node.visits += 1
-            node.value += result
+            node.total_reward += reward
             node = node.parent
 
     def get_best_action(self, root):
-        children = root.children
-        if children:
-            best_child = max(children, key=lambda child: child.visits)
-            return best_child.action
-        else:
-            # If there are no children, choose an action using some default strategy
-            actions = self.get_untried_actions(root.state)
-            return random.choice(actions)
+        best_child = max(root.children, key=lambda child: child.total_reward / child.visits)
+        return best_child.action
 
 class Node:
-    def __init__(self, state, action=None, parent=None):
-        self.state = state
-        self.action = action
+    def __init__(self, env, parent=None, action=None):
+        self.env = env  # Store the environment instance
         self.parent = parent
         self.children = []
-        self.visits = 0
-        self.value = 0
+        self.visits = 1
+        self.total_reward = 0.0
+        self.action = action
+
+    def is_terminal(self):
+        return self.env.is_terminal()
 
 if __name__ == '__main__':
     env = ConnectFourEnv()
     mcts_agent = MCTSAgent(env)
 
-    num_simulations = 1000  # You can adjust this number
-    best_action = mcts_agent.select_action(env.reset(), num_simulations)
+    num_simulations = 100  # Adjust the number of simulations as needed
+    env.reset()  # Prepare the environment for the new game
+    best_action = mcts_agent.select_action(num_simulations)  # Pass only the num_simulations argument
 
     print(f"Best action: {best_action}")

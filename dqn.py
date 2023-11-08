@@ -42,6 +42,10 @@ class ExperienceReplayBuffer:
     def sample(self, batch_size):
         # Sample a batch of experiences from the buffer
         return random.sample(self.buffer, batch_size)
+    
+    def __len__(self):
+        # Return the current size of the internal buffer
+        return len(self.buffer)
 
 # Define the DQN agent
 
@@ -56,72 +60,73 @@ class DQNAgent:
         self.target_update_frequency = target_update_frequency
         self.optimizer = optim.Adam(self.model.parameters())
         self.loss_fn = nn.MSELoss()
+        self.num_training_steps = 0  # To keep track of the number of training steps
 
     def select_action(self, state, epsilon):
         # Directly check which columns are not full
-        available_columns = [col for col in range(7) if state[0][col] == 0]
-
-        if not available_columns:
-            return None  # No valid moves available
+        available_actions = self.env.get_valid_actions()
 
         if random.random() < epsilon:
-            return random.choice(available_columns)
+            return random.choice(available_actions)
 
-        state_tensor = torch.tensor(state, dtype=torch.float32)
+        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)  # Adding batch dimension
         with torch.no_grad():
-            q_values = self.model(state_tensor)
+            q_values = self.model(state_tensor).squeeze()
 
-        # Set the q_values for full columns to negative infinity
-        q_values_clone = q_values.clone()
-        q_values_clone[0, [col for col in range(7) if col not in available_columns]] = -float('inf')
+        # Mask the Q-values of invalid actions with a very negative number
+        masked_q_values = torch.full(q_values.shape, float('-inf'))
+        masked_q_values[available_actions] = q_values[available_actions]
 
-        chosen_action = torch.argmax(q_values_clone).item()
-        return chosen_action
+        # Get the action with the highest Q-value among the valid actions
+        action = torch.argmax(masked_q_values).item()
+        return action
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.9995):
+    def train_step(self):
+        if len(self.buffer) >= self.batch_size:
+            experiences = self.buffer.sample(self.batch_size)
+            states, actions, rewards, next_states, dones = zip(*experiences)
+
+            states = torch.stack(states)
+            next_states = torch.stack(next_states)
+            rewards = torch.tensor(rewards, dtype=torch.float32)
+            actions = torch.tensor(actions, dtype=torch.int64)
+            dones = torch.tensor(dones, dtype=torch.float32)
+
+            current_q_values = self.model(states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
+            with torch.no_grad():
+                max_next_q_values = self.target_model(next_states).max(1)[0]
+                expected_q_values = rewards + (1 - dones) * 0.99 * max_next_q_values  # Assuming a gamma of 0.99
+
+            loss = self.loss_fn(current_q_values, expected_q_values)
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            if self.num_training_steps % self.target_update_frequency == 0:
+                self.target_model.load_state_dict(self.model.state_dict())
+
+            self.num_training_steps += 1
+
+    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.999):
         epsilon = epsilon_start
-
-        for episode in tqdm(range(num_episodes)):  # Wrap the loop with tqdm for progress tracking
+        for episode in tqdm(range(num_episodes), desc="Training", unit="episode"):
             state = self.env.reset()
+            done = False
             total_reward = 0
 
-            for step in range(self.env.max_moves):
+            while not done:
                 action = self.select_action(state, epsilon)
-
                 next_state, reward, done, _ = self.env.step(action)
                 self.buffer.add(Experience(state, action, reward, next_state, done))
-
                 state = next_state
                 total_reward += reward
 
-                if done:
-                    break
+                self.train_step()
 
-                if len(self.buffer.buffer) >= self.batch_size:
-                    experiences = self.buffer.sample(self.batch_size)
-                    states, actions, rewards, next_states, dones = zip(*experiences)
+                # Decay epsilon
+                epsilon = max(epsilon_final, epsilon * epsilon_decay)
 
-                    states = torch.stack(states)
-                    next_states = torch.stack(next_states)
-                    rewards = torch.tensor(rewards, dtype=torch.float32)
-                    actions = torch.tensor(actions, dtype=torch.int64)
-                    dones = torch.tensor(dones, dtype=torch.float32)
-
-                    q_values = self.model(states)
-                    with torch.no_grad():
-                        next_q_values = self.target_model(next_states)
-                        target_q_values = rewards + 0.99 * next_q_values.max(1)[0] * (1 - dones)
-
-                    loss = self.loss_fn(q_values.gather(1, actions.unsqueeze(1)), target_q_values.unsqueeze(1))
-
-                    self.optimizer.zero_grad()
-                    loss.backward()
-                    self.optimizer.step()
-
-                if step % self.target_update_frequency == 0:
-                    self.target_model.load_state_dict(self.model.state_dict())
-
-            epsilon = max(epsilon_final, epsilon * epsilon_decay)
             tqdm.write(f"Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
 
 # Main function

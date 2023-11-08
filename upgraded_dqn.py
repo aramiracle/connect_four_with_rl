@@ -118,7 +118,7 @@ class DQNAgent:
         chosen_action = torch.argmax(q_values_clone).item()
         return chosen_action
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.9995):
+    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.999):
         epsilon = epsilon_start  # Starting value for epsilon in epsilon-greedy strategy
 
         for episode in tqdm(range(num_episodes)):  # Iterate over each episode
