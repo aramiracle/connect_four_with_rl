@@ -1,6 +1,7 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QGridLayout, QWidget, QRadioButton, QHBoxLayout
-from dqn import DQNAgent, ConnectFourEnv
+from hybrid import HybridAgent
+from environment import ConnectFourEnv
 from functools import partial
 from PyQt6.QtCore import Qt
 import torch
@@ -12,7 +13,7 @@ class ConnectFour(QMainWindow):
         self.setWindowTitle("Connect Four")
         self.setGeometry(100, 100, 600, 600)
         self.initUI()
-        self.dqn_agent = DQNAgent(ConnectFourEnv())  # DQN Agent for playing the game
+        self.agent = HybridAgent(ConnectFourEnv())  # Hybrid Agent for playing the game
         self.current_player = 1
         self.game_over = False
         self.game_state_history = []
@@ -90,9 +91,9 @@ class ConnectFour(QMainWindow):
         
         # Find the first empty space in the column
         for r in range(5, -1, -1):
-            if self.dqn_agent.env.board[r][col] == 0:
+            if self.agent.env.board[r][col] == 0:
                 # Update the environment directly
-                self.dqn_agent.env.board[r][col] = self.current_player
+                self.agent.env.board[r][col] = self.current_player
                 break
         
         # Update the GUI for the corresponding button
@@ -100,10 +101,10 @@ class ConnectFour(QMainWindow):
         self.board[r][col].setStyleSheet(f'background-color: {color};')
         
         # Check for win or continue the game
-        if self.dqn_agent.env.check_win(r, col):
+        if self.agent.env.check_win(r, col):
             self.status_label.setText(f"Player {self.current_player} wins!")
             self.game_over = True
-        elif self.dqn_agent.env.is_terminal():
+        elif self.agent.env.is_terminal():
             self.status_label.setText("It's a draw!")
             self.game_over = True
         else:
@@ -111,31 +112,46 @@ class ConnectFour(QMainWindow):
             self.current_player = 3 - self.current_player
             self.play_ai_turn()
 
-
     def play_ai_turn(self):
-        # Check if the game is already over
         if self.game_over:
             return
+        
+        # AI selects the move
+        action = self.ai_select_move()
 
+        # Update the game state with AI's action
+        row = self.update_game_state(action)
+
+        print(self.agent.env.board)
+
+        # Update the UI with the new game state
+        self.update_ui(row, action)
+
+        # Check if the game is over
+        self.check_game_over(row, action)
+
+    def ai_select_move(self):
         # AI decides on the move based on the updated environment state
-        action = self.dqn_agent.select_action(self.dqn_agent.env.board, epsilon=0.0)
+        return self.agent.select_action(self.agent.env.board, use_mcts=True)
 
+    def update_game_state(self, action):
         # Find the first empty space in the column
         for r in range(5, -1, -1):
-            if self.dqn_agent.env.board[r][action] == 0:
-                # Update the environment directly
-                self.dqn_agent.env.board[r][action] = self.current_player
-                break
+            if self.agent.env.board[r][action] == 0:
+                self.agent.env.board[r][action] = self.current_player
+                return r
 
+    def update_ui(self, row, action):
         # Update the GUI for the corresponding button
         color = 'yellow' if self.current_player == 2 else 'red'
-        self.board[r][action].setStyleSheet(f'background-color: {color};')
+        self.board[row][action].setStyleSheet(f'background-color: {color};')
 
+    def check_game_over(self, row, action):
         # Check if AI's action ends the game
-        if self.dqn_agent.env.check_win(r, action):
+        if self.agent.env.check_win(row, action):
             self.status_label.setText("AI wins!")
             self.game_over = True
-        elif self.dqn_agent.env.is_terminal():
+        elif self.agent.env.is_terminal():
             self.status_label.setText("It's a draw!")
             self.game_over = True
         else:
@@ -187,10 +203,10 @@ class ConnectFour(QMainWindow):
     # Load the trained DQN agent
     def load_agent(self):
         try:
-            checkpoint = torch.load('saved_agents/dqn_agent_after_training.pth')
-            self.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
-            self.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
-            self.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            checkpoint = torch.load('saved_agents/hybrid_agent_after_training.pth')
+            self.agent.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
+            self.agent.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
+            self.agent.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             self.status_label.setText("Agent loaded successfully.")
             self.play_button.setDisabled(False)
         except FileNotFoundError:

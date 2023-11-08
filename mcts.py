@@ -9,8 +9,8 @@ class MCTSAgent:
         self.dqn_model = dqn_model
         self.exploration_weight = exploration_weight
 
-    def select_action(self, num_simulations):
-        root = Node(self.env)  # Use the agent's environment
+    def select_action(self, sim_env, num_simulations):
+        root = Node(sim_env)  # Use the copied environment
         for _ in range(num_simulations):
             node = self.select(root)
             reward = self.rollout(node.env)  # Use the node's environment copy
@@ -20,7 +20,8 @@ class MCTSAgent:
     def expand(self, node):
         actions = node.env.get_valid_actions()
         action = random.choice(actions)
-        new_env = copy.deepcopy(self.env)
+        # Create a deep copy of the environment for the new child node
+        new_env = copy.deepcopy(node.env)
         new_env.step(action)
         child_node = Node(new_env, parent=node, action=action)
         node.children.append(child_node)
@@ -49,6 +50,7 @@ class MCTSAgent:
             return None
 
     def rollout(self, env):
+        # Create a deep copy of the environment to prevent changes to the actual game state
         temp_env = copy.deepcopy(env)
         while not temp_env.is_terminal():
             action = random.choice(temp_env.get_valid_actions())

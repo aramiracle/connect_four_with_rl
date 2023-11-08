@@ -4,6 +4,7 @@ from environment import ConnectFourEnv
 from collections import namedtuple
 import torch
 from tqdm import tqdm
+import copy
 
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
@@ -22,15 +23,13 @@ class HybridAgent:
 
     def select_action(self, state, use_mcts=True):
         if use_mcts:
-            # Use MCTS to explore and choose an action
-            action = self.mcts_agent.select_action(num_simulations=self.num_simulations)
-            # Store the result of MCTS simulation in DQN experience buffer
-            next_state, reward, done, _ = self.env.step(action)
-            self.dqn_agent.buffer.add(Experience(state, action, reward, next_state, done))
+            # Use a copy of the environment for MCTS to prevent altering the main environment
+            temp_env = copy.deepcopy(self.env)
+            action = self.mcts_agent.select_action(temp_env, num_simulations=self.num_simulations)
             return action
         else:
             # Use DQN to exploit knowledge and choose an action
-            epsilon = 0.05  # You can adjust epsilon over time
+            epsilon = 0
             return self.dqn_agent.select_action(state, epsilon)
 
     def train(self, num_episodes):
