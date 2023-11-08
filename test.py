@@ -15,7 +15,7 @@ def simulate_game(env, ai_agent, ai_starts=True):
     done = False
     while not done:
         if (ai_starts and env.current_player == 1) or (not ai_starts and env.current_player == 2):
-            action = ai_agent.select_action(state, use_mcts=False)
+            action = ai_agent.select_action(state, use_mcts=True)
         else:
             action = random_bot_action(env)
         if action is None:

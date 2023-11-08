@@ -8,8 +8,9 @@ from tqdm import tqdm
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
 class HybridAgent:
-    def __init__(self, env):
+    def __init__(self, env, num_simulation=10):
         self.env = env
+        self.num_simulations = num_simulation
         self.dqn_agent = DQNAgent(self.env)
         self.mcts_agent = MCTSAgent(self.env, dqn_model=self.dqn_agent.model)
 
@@ -22,7 +23,7 @@ class HybridAgent:
     def select_action(self, state, use_mcts=True):
         if use_mcts:
             # Use MCTS to explore and choose an action
-            action = self.mcts_agent.select_action(num_simulations=10)
+            action = self.mcts_agent.select_action(num_simulations=self.num_simulations)
             # Store the result of MCTS simulation in DQN experience buffer
             next_state, reward, done, _ = self.env.step(action)
             self.dqn_agent.buffer.add(Experience(state, action, reward, next_state, done))
@@ -62,7 +63,7 @@ if __name__=='__main__':
 
 
     # Train the DQN agent
-    num_episodes = 10000
+    num_episodes = 10
     hybrid_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training
