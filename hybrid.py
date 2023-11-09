@@ -55,14 +55,14 @@ class HybridAgent:
 
 if __name__=='__main__':
     env = ConnectFourEnv()
-    hybrid_agent = HybridAgent(env)
+    hybrid_agent = HybridAgent(env, num_simulation=30)
 
     # Load the pre-trained DQN model
     hybrid_agent.load_pretrained_dqn_model('saved_agents/dqn_agent_after_training.pth')
 
 
     # Train the DQN agent
-    num_episodes = 10
+    num_episodes = 1000
     hybrid_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training

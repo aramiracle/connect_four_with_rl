@@ -30,7 +30,7 @@ def test_ai_vs_random(env, ai_agent, num_games=1000):
     draws = 0
 
     for _ in tqdm(range(num_games // 2), desc='AI as First Player'):
-        winner = simulate_game(env, ai_agent, ai_starts=True)
+        winner = simulate_game(env, ai_agent, ai_starts=False)
         if winner == 1:
             ai_first_player_wins += 1
         elif winner is None:
