@@ -48,7 +48,7 @@ class ExperienceReplayBuffer:
         return len(self.buffer)
 
 # Define the DQN agent
-
+# Define the DQN agent
 class DQNAgent:
     def __init__(self, env, buffer_capacity=100000, batch_size=64, target_update_frequency=10):
         self.env = env
@@ -94,7 +94,8 @@ class DQNAgent:
 
             current_q_values = self.model(states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
             with torch.no_grad():
-                max_next_q_values = self.target_model(next_states).max(1)[0]
+                next_q_values = self.target_model(next_states)
+                max_next_q_values = next_q_values.max(1)[0]
                 expected_q_values = rewards + (1 - dones) * 0.99 * max_next_q_values  # Assuming a gamma of 0.99
 
             loss = self.loss_fn(current_q_values, expected_q_values)
@@ -112,10 +113,14 @@ class DQNAgent:
         epsilon = epsilon_start
         
         for episode in tqdm(range(num_episodes), desc="Training", unit="episode"):
-
             state = self.env.reset()
             done = False
             total_reward = 0
+
+            # If the AI is the first player, make a random move to offset the advantage of going first
+            if self.env.current_player == 1:
+                random_action = random.choice(self.env.get_valid_actions())
+                state, _, _, _ = self.env.step(random_action)
 
             while not done:
                 action = self.select_action(state, epsilon)
@@ -130,14 +135,14 @@ class DQNAgent:
                 epsilon = max(epsilon_final, epsilon * epsilon_decay)
 
             tqdm.write(f"Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
-
+            
 # Main function
 if __name__ == '__main__':
     env = ConnectFourEnv()
     dqn_agent = DQNAgent(env)
 
     # Train the DQN agent
-    num_episodes = 10000
+    num_episodes = 1000
     dqn_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training

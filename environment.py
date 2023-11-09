@@ -16,10 +16,10 @@ class ConnectFourEnv(gym.Env):
         self.action_space = gym.spaces.Discrete(7)
         self.observation_space = gym.spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.float32)
 
-    def reset(self, random_side=True):
+    def reset(self):
         # Reset the board and randomly select which player starts
         self.board = torch.zeros((6, 7), dtype=torch.float32)
-        self.current_player = torch.randint(1, 3, ()).item() if random_side else 1
+        self.current_player = 1
         self.winner = None
         # Return initial observation
         return self.board
