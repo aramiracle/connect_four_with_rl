@@ -48,7 +48,6 @@ class ExperienceReplayBuffer:
         return len(self.buffer)
 
 # Define the DQN agent
-# Define the DQN agent
 class DQNAgent:
     def __init__(self, env, buffer_capacity=100000, batch_size=64, target_update_frequency=10):
         self.env = env
@@ -63,21 +62,18 @@ class DQNAgent:
         self.num_training_steps = 0
 
     def select_action(self, state, epsilon):
-        # Directly check which columns are not full
         available_actions = self.env.get_valid_actions()
 
         if random.random() < epsilon:
             return random.choice(available_actions)
 
-        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)  # Adding batch dimension
+        state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
             q_values = self.model(state_tensor).squeeze()
 
-        # Mask the Q-values of invalid actions with a very negative number
         masked_q_values = torch.full(q_values.shape, float('-inf'))
         masked_q_values[available_actions] = q_values[available_actions]
 
-        # Get the action with the highest Q-value among the valid actions
         action = torch.argmax(masked_q_values).item()
         return action
 
@@ -94,8 +90,7 @@ class DQNAgent:
 
             current_q_values = self.model(states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
             with torch.no_grad():
-                next_q_values = self.target_model(next_states)
-                max_next_q_values = next_q_values.max(1)[0]
+                max_next_q_values = self.target_model(next_states).max(1)[0]
                 expected_q_values = rewards + (1 - dones) * 0.99 * max_next_q_values  # Assuming a gamma of 0.99
 
             loss = self.loss_fn(current_q_values, expected_q_values)
@@ -104,38 +99,37 @@ class DQNAgent:
             loss.backward()
             self.optimizer.step()
 
-            if self.num_training_steps % self.target_update_frequency == 0:
-                self.target_model.load_state_dict(self.model.state_dict())
+    def play_episode(self, epsilon):
+        state = self.env.reset()
+        done = False
+        total_reward = 0
 
-            self.num_training_steps += 1
+        while not done:
+            action = self.select_action(state, epsilon)
+            next_state, reward, done, _ = self.env.step(action)
+            self.buffer.add(Experience(state, action, reward, next_state, done))
+            state = next_state
+            total_reward += reward
+
+            self.train_step()
+
+        return total_reward
 
     def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.999):
         epsilon = epsilon_start
-        
+
         for episode in tqdm(range(num_episodes), desc="Training", unit="episode"):
-            state = self.env.reset()
-            done = False
-            total_reward = 0
+            total_reward = self.play_episode(epsilon)
 
-            # If the AI is the first player, make a random move to offset the advantage of going first
-            if self.env.current_player == 1:
-                random_action = random.choice(self.env.get_valid_actions())
-                state, _, _, _ = self.env.step(random_action)
-
-            while not done:
-                action = self.select_action(state, epsilon)
-                next_state, reward, done, _ = self.env.step(action)
-                self.buffer.add(Experience(state, action, reward, next_state, done))
-                state = next_state
-                total_reward += reward
-
-                self.train_step()
-
-                # Decay epsilon
-                epsilon = max(epsilon_final, epsilon * epsilon_decay)
+            # Decay epsilon
+            epsilon = max(epsilon_final, epsilon * epsilon_decay)
 
             tqdm.write(f"Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
-            
+
+            # Update target network
+            if episode % self.target_update_frequency == 0:
+                self.target_model.load_state_dict(self.model.state_dict())
+                
 # Main function
 if __name__ == '__main__':
     env = ConnectFourEnv()
