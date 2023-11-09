@@ -62,7 +62,7 @@ if __name__=='__main__':
 
 
     # Train the DQN agent
-    num_episodes = 1000
+    num_episodes = 1
     hybrid_agent.train(num_episodes=num_episodes)
 
     # Save the DQN agent's state after training

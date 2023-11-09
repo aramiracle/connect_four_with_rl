@@ -60,7 +60,7 @@ class DQNAgent:
         self.target_update_frequency = target_update_frequency
         self.optimizer = optim.Adam(self.model.parameters())
         self.loss_fn = nn.MSELoss()
-        self.num_training_steps = 0  # To keep track of the number of training steps
+        self.num_training_steps = 0
 
     def select_action(self, state, epsilon):
         # Directly check which columns are not full
@@ -110,7 +110,9 @@ class DQNAgent:
 
     def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.999):
         epsilon = epsilon_start
+        
         for episode in tqdm(range(num_episodes), desc="Training", unit="episode"):
+
             state = self.env.reset()
             done = False
             total_reward = 0

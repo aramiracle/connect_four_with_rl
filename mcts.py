@@ -85,6 +85,6 @@ if __name__ == '__main__':
 
     num_simulations = 100  # Adjust the number of simulations as needed
     env.reset()  # Prepare the environment for the new game
-    best_action = mcts_agent.select_action(num_simulations)  # Pass only the num_simulations argument
+    best_action = mcts_agent.select_action(env, num_simulations)  # Pass only the num_simulations argument
 
     print(f"Best action: {best_action}")
