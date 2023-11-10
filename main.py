@@ -136,32 +136,40 @@ class ConnectFour(QMainWindow):
 
     def select_agent(self):
         agent_type, ok = QInputDialog.getItem(self, "Select Agent Type", 
-                                              "Choose an agent:", ["DQN", "Hybrid"], 0, False)
+                                            "Choose an agent:", ["DQN", "Hybrid"], 0, False)
         if ok and agent_type:
             if agent_type == "DQN":
                 self.agent = DQNAgent(ConnectFourEnv())
-                self.load_agent('saved_agents/dqn_agent_after_training.pth')
+                self.load_agent('saved_agents/dqn_agents_after_vs_agent_train.pth')  # Corrected file name
             elif agent_type == "Hybrid":
                 self.agent = HybridAgent(ConnectFourEnv())
-                self.load_agent('saved_agents/hybrid_agent_after_training.pth')
+                self.load_agent('saved_agents/hybrid_agents_after_vs_agent_train.pth')  # Adjust the file name if necessary
+
 
     def load_agent(self, filepath):
         try:
+            # Load the agent based on its type
             if isinstance(self.agent, DQNAgent):
+                # Load DQN agent
                 checkpoint = torch.load(filepath)
-                self.agent.model.load_state_dict(checkpoint['model_state_dict'])
-                self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
-                self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                # Load the state of the model, target model, and optimizer
+                self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])  # Adjust for Player 1 or Player 2
+                self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])  # Adjust for Player 1 or Player 2
+                self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])  # Adjust for Player 1 or Player 2
             elif isinstance(self.agent, HybridAgent):
+                # Load Hybrid agent
                 checkpoint = torch.load(filepath)
-                self.agent.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
-                self.agent.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
-                self.agent.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+                self.agent.dqn_agent.model.load_state_dict(checkpoint['model_state_dict_player1'])  # Adjust for Player 1 or Player 2
+                self.agent.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])  # Adjust for Player 1 or Player 2
+                self.agent.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])  # Adjust for Player 1 or Player 2
+            # Display a success message
             self.status_label.setText(f"{type(self.agent).__name__} loaded successfully.")
             self.play_button.setDisabled(False)
         except FileNotFoundError:
+            # Display an error message if the file is not found
             self.status_label.setText("Agent file not found.")
         except Exception as e:
+            # Display an error message if loading fails
             self.status_label.setText(f"Failed to load agent: {str(e)}")
 
 # Entry point of the application

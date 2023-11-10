@@ -14,7 +14,8 @@ class DQN(nn.Module):
         # Adjust the input layer size for one-hot encoding with 3 different states
         self.fc1 = nn.Linear(6 * 7 * 3, 256)
         self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 7)
+        self.fc3 = nn.Linear(128, 64)
+        self.fc4 = nn.Linear(64, 7)
 
     def forward(self, x):
         x = x.long()
@@ -25,7 +26,8 @@ class DQN(nn.Module):
         # Pass through the network
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        return self.fc3(x)
+        x = F.relu(self.fc3(x))
+        return self.fc4(x)
 
 # Implement experience replay buffer
 
@@ -114,10 +116,10 @@ class DQNAgent:
 
             self.num_training_steps += 1
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.999):
+    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.995, player=1):
         epsilon = epsilon_start
 
-        for episode in tqdm(range(num_episodes), desc="Training", unit="episode"):
+        for episode in tqdm(range(num_episodes), desc=f"Training Player {player}", unit="episode"):
             state = self.env.reset()
             done = False
             total_reward = 0
@@ -131,24 +133,70 @@ class DQNAgent:
 
                 self.train_step()
 
-            tqdm.write(f"Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
+            tqdm.write(f"Player {player}, Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
 
             # Decay epsilon at the end of each episode
             epsilon = max(epsilon_final, epsilon * epsilon_decay)
 
-            
-# Main function
+
+def agent_vs_agent_train(agent1, agent2, env, num_episodes=1000):
+    for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
+        state_player1 = env.reset()
+        state_player2 = env.reset()
+
+        done = False
+        total_reward_player1 = 0
+        total_reward_player2 = 0
+
+        while not done:
+            # Player 1's turn
+            action_player1 = agent1.select_action(state_player1, epsilon=0.1)  # Add a small exploration during training
+            next_state_player1, reward_player1, done, _ = env.step(action_player1)
+            total_reward_player1 += reward_player1
+            agent1.buffer.add(Experience(state_player1, action_player1, reward_player1, next_state_player1, done))
+            state_player1 = next_state_player1
+
+            if done:
+                break
+
+            # Player 2's turn
+            action_player2 = agent2.select_action(state_player2, epsilon=0.1)  # Add a small exploration during training
+            next_state_player2, reward_player2, done, _ = env.step(action_player2)
+            total_reward_player2 += reward_player2
+            agent2.buffer.add(Experience(state_player2, action_player2, reward_player2, next_state_player2, done))
+            state_player2 = next_state_player2
+
+        # Train both agents
+        agent1.train_step()
+        agent2.train_step()
+
+        tqdm.write(f"Episode: {episode}, Total Reward Player 1: {total_reward_player1:.4f}, Total Reward Player 2: {total_reward_player2:.4f}")
+
+    env.close()
+
+# Example usage:
 if __name__ == '__main__':
     env = ConnectFourEnv()
-    dqn_agent = DQNAgent(env)
 
-    # Train the DQN agent
+    # Player 1
+    dqn_agent_player1 = DQNAgent(env)
     num_episodes = 1000
-    dqn_agent.train(num_episodes=num_episodes)
+    dqn_agent_player1.train(num_episodes=num_episodes, player=1)
 
-    # Save the DQN agent's state after training
+    # Player 2
+    dqn_agent_player2 = DQNAgent(env)
+    num_episodes = 1000
+    dqn_agent_player2.train(num_episodes=num_episodes, player=2)
+
+    # Agent vs Agent Training
+    agent_vs_agent_train(dqn_agent_player1, dqn_agent_player2, env, num_episodes=10000)
+
+    # Save the trained agents
     torch.save({
-        'model_state_dict': dqn_agent.model.state_dict(),
-        'target_model_state_dict': dqn_agent.target_model.state_dict(),
-        'optimizer_state_dict': dqn_agent.optimizer.state_dict(),
-    }, 'saved_agents/dqn_agent_after_training.pth')
+        'model_state_dict_player1': dqn_agent_player1.model.state_dict(),
+        'target_model_state_dict_player1': dqn_agent_player1.target_model.state_dict(),
+        'optimizer_state_dict_player1': dqn_agent_player1.optimizer.state_dict(),
+        'model_state_dict_player2': dqn_agent_player2.model.state_dict(),
+        'target_model_state_dict_player2': dqn_agent_player2.target_model.state_dict(),
+        'optimizer_state_dict_player2': dqn_agent_player2.optimizer.state_dict(),
+    }, 'saved_agents/dqn_agents_after_vs_agent_train.pth')
