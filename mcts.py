@@ -4,108 +4,63 @@ import copy
 from environment import ConnectFourEnv  # Assuming environment.py contains this class
 
 class MCTSAgent:
-    def __init__(self, env, dqn_model=None, exploration_weight=1.0, simulation_depth=2):
+    def __init__(self, env, dqn_model=None, exploration_weight=1.0):
         self.env = env
         self.dqn_model = dqn_model
         self.exploration_weight = exploration_weight
-        self.simulation_depth = simulation_depth
 
-    def select_action(self, sim_env, num_simulations):
-        root = Node(sim_env)  # Use the copied environment
+    def select_action(self, num_simulations, depth=2):
+        root = Node(copy.deepcopy(self.env))
         for _ in range(num_simulations):
-            node = self.select(root)
-            reward = self.rollout(node.env)  # Use the node's environment copy
+            node = self.select(root, depth)
+            reward = self.rollout(node.env)
             self.backpropagate(node, reward)
+
         return self.get_best_action(root)
 
-    def expand(self, node, depth=None):
-        if depth is None:
-            depth = self.simulation_depth
+    def expand(self, node, depth):
+        actions = node.env.get_valid_actions()
+        action = random.choice(actions)
+        new_env = copy.deepcopy(node.env)
+        new_env.step(action)
+        child_node = Node(new_env, parent=node, action=action)
+        node.children.append(child_node)
 
-        if depth == 0 or node.is_terminal():
-            return node
+        if depth == 2 and not child_node.is_terminal():
+            for _ in range(depth - 1):
+                child_node = self.expand(child_node, 1)
+                if child_node.is_terminal() and child_node.env.get_result() == 1:
+                    # Mark the parent node to skip in subsequent selections
+                    node.skip_parent = True
+                    break
 
-        actions = self.get_non_losing_moves(node.env)  # Get non-losing moves
-        child_nodes = []
+        return child_node
 
-        for action in actions:
-            new_env = copy.deepcopy(node.env)
-            new_env.step(action)
-
-            child_node = Node(new_env, parent=node, action=action)
-            node.children.append(child_node)
-            child_nodes.append(child_node)
-
-        for child_node in child_nodes:
-            self.expand(child_node, depth=2)  # Expand to depth=2 for each child node
+    def select(self, node, depth):
+        while not node.is_terminal():
+            if not node.children:
+                return self.expand(node, depth)
+            if not all(child.visits for child in node.children):
+                return self.expand(node, depth)
+            else:
+                node = self.get_best_child(node)
 
         return node
-    
-    def get_non_losing_moves(self, env):
-        non_losing_moves = []
-        for action in env.get_valid_actions():
-            if not self.is_losing_move_after_action(env, action):
-                non_losing_moves.append(action)
-        return non_losing_moves
-
-    def is_losing_move(self, env):
-        temp_env = copy.deepcopy(env)
-        for _ in range(2):
-            if temp_env.is_terminal():
-                return temp_env.get_result() == -1  # Assuming -1 represents a loss
-            valid_actions = temp_env.get_valid_actions()
-            action = random.choice(valid_actions)
-            temp_env.step(action)
-        return temp_env.is_terminal() and temp_env.get_result() == -1
-
-    def is_losing_move_after_action(self, env, action):
-        temp_env = copy.deepcopy(env)
-        temp_env.step(action)
-        return self.is_losing_move(temp_env)
-
-    def select(self, node):
-        expanded_node = self.expand(node, depth=self.simulation_depth)
-        
-        # Check all possible moves up to depth=2
-        for _ in range(2):
-            if not expanded_node.children:
-                return self.expand(expanded_node, depth=self.simulation_depth)  # Expand if there are no children
-            expanded_node = self.get_best_child(expanded_node)
-
-        while not expanded_node.is_terminal():
-            if not expanded_node.children:
-                return self.expand(expanded_node, depth=self.simulation_depth)  # Expand if there are no children
-            expanded_node = self.get_best_child(expanded_node)
-        return expanded_node
 
     def get_best_child(self, node):
-        if node.children:
-            exploration_term = self.exploration_weight * math.sqrt(2 * math.log(node.visits) / len(node.children))
-            return max(node.children, key=lambda child: child.total_reward / child.visits + exploration_term)
+        valid_children = [child for child in node.children if not getattr(child, 'skip_parent', False)]
+        
+        if valid_children:
+            return max(valid_children, key=lambda child: child.total_reward / child.visits +
+                    self.exploration_weight * math.sqrt(2 * math.log(node.visits) / child.visits))
         else:
             return None
 
     def rollout(self, env):
         temp_env = copy.deepcopy(env)
         while not temp_env.is_terminal():
-            if self.dqn_model is not None:
-                valid_actions = temp_env.get_valid_actions()
-                state = temp_env.get_state()
-                action_values = self.dqn_model.predict(state)
-                valid_action_values = {a: action_values[a] for a in valid_actions}
-                if valid_action_values:
-                    action = max(valid_action_values, key=valid_action_values.get)
-                else:
-                    action = random.choice(temp_env.get_valid_actions())
-            else:
-                action = random.choice(temp_env.get_valid_actions())
-
+            action = random.choice(temp_env.get_valid_actions())
             temp_env.step(action)
-
-            # Check if the selected action leads to an instant loss
-            if temp_env.is_terminal() and temp_env.get_result() == -1:  # Assuming -1 represents a loss
-                return float('-inf')
-
         return temp_env.get_result()
 
     def backpropagate(self, node, reward):
@@ -119,7 +74,7 @@ class MCTSAgent:
             best_child = max(root.children, key=lambda child: child.total_reward / child.visits)
             return best_child.action
         else:
-            return None
+            return None 
 
 class Node:
     def __init__(self, env, parent=None, action=None):
@@ -129,6 +84,7 @@ class Node:
         self.visits = 1
         self.total_reward = 0.0
         self.action = action
+        self.skip_parent = False  # Flag to skip this parent node in subsequent selections
 
     def is_terminal(self):
         return self.env.is_terminal()
@@ -137,8 +93,8 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
     mcts_agent = MCTSAgent(env)
 
-    num_simulations = 100
+    num_simulations = 100  # Adjust the number of simulations as needed
     env.reset()
-    best_action = mcts_agent.select_action(env, num_simulations)
+    best_action = mcts_agent.select_action(num_simulations)
 
     print(f"Best action: {best_action}")

@@ -9,7 +9,7 @@ import copy
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
 class HybridAgent:
-    def __init__(self, env, num_simulation=5):
+    def __init__(self, env, num_simulation=2):
         self.env = env
         self.num_simulations = num_simulation
         self.dqn_agent_player1 = DQNAgent(self.env)
@@ -29,7 +29,7 @@ class HybridAgent:
 
     def select_action(self, state, player, epsilon=0, use_mcts=True):
         if use_mcts:
-            action = self.mcts_agent.select_action(sim_env=self.env, num_simulations=self.num_simulations)
+            action = self.mcts_agent.select_action(num_simulations=self.num_simulations)
             return action
         else:
             # Use DQN to exploit knowledge and choose an action
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     env = ConnectFourEnv()
 
     # Hybrid Agents
-    hybrid_agents = [HybridAgent(env, num_simulation=30) for _ in range(2)]
+    hybrid_agents = [HybridAgent(env, num_simulation=10) for _ in range(2)]
 
     # Agent vs Agent Training
     agent_vs_agent_train(hybrid_agents, env, num_episodes=1)
