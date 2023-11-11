@@ -84,6 +84,7 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
     return ai1_wins, ai2_wins, draws
 
 if __name__ == '__main__':
+    # Create environment
     env = ConnectFourEnv()
 
     # Load AI agents
