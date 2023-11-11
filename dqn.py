@@ -127,7 +127,7 @@ def agent_vs_agent_train(agents, env, num_episodes=1000):
 if __name__ == '__main__':
     env = ConnectFourEnv()
     dqn_agents = [DQNAgent(env), DQNAgent(env)]
-    agent_vs_agent_train(dqn_agents, env, num_episodes=100000)
+    agent_vs_agent_train(dqn_agents, env, num_episodes=10000)
     
     # Save the trained agents
     torch.save({

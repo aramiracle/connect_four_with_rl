@@ -1,12 +1,11 @@
 import random
 import math
 import copy
-from environment import ConnectFourEnv  # Assuming environment.py contains this class
+from environment import ConnectFourEnv
 
 class MCTSAgent:
-    def __init__(self, env, dqn_model=None, exploration_weight=1.0):
+    def __init__(self, env, exploration_weight=1.0):
         self.env = env
-        self.dqn_model = dqn_model
         self.exploration_weight = exploration_weight
 
     def select_action(self, num_simulations, depth=2):
@@ -26,7 +25,7 @@ class MCTSAgent:
         child_node = Node(new_env, parent=node, action=action)
         node.children.append(child_node)
 
-        if depth == 2 and not child_node.is_terminal():
+        if depth > 1 and not child_node.is_terminal():
             for _ in range(depth - 1):
                 child_node = self.expand(child_node, 1)
                 if child_node.is_terminal() and child_node.env.get_result() == 1:
@@ -43,9 +42,23 @@ class MCTSAgent:
             if not all(child.visits for child in node.children):
                 return self.expand(node, depth)
             else:
-                node = self.get_best_child(node)
+                valid_children = [child for child in node.children if not getattr(child, 'skip_parent', False)]
+                if valid_children:
+                    node = self.get_best_child(node)
+                    # Check if the opponent has a winning move after this action
+                    if not self.has_winning_move_after_action(node):
+                        return node
+                    else:
+                        # Mark the parent node to skip in subsequent selections
+                        node.skip_parent = True
+                else:
+                    return None
 
-        return node
+    def has_winning_move_after_action(self, node):
+        temp_env = copy.deepcopy(node.env)
+        temp_env.step(node.action)  # Simulate the action
+        row, col = temp_env.get_last_move()
+        return temp_env.check_win(row, col)
 
     def get_best_child(self, node):
         valid_children = [child for child in node.children if not getattr(child, 'skip_parent', False)]
@@ -74,7 +87,7 @@ class MCTSAgent:
             best_child = max(root.children, key=lambda child: child.total_reward / child.visits)
             return best_child.action
         else:
-            return None 
+            return None
 
 class Node:
     def __init__(self, env, parent=None, action=None):

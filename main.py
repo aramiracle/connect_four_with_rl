@@ -108,7 +108,7 @@ class ConnectFour(QMainWindow):
         if isinstance(self.agent, HybridAgent):
             return self.agent.select_action(self.agent.env.board, player=self.current_player, use_mcts=True)
         elif isinstance(self.agent, DQNAgent):
-            return self.agent.select_action(self.agent.env.board, epsilon=0.0)
+            return self.agent.select_action(self.agent.env.board)
         else:
             self.status_label.setText("No agent is loaded.")
             return None

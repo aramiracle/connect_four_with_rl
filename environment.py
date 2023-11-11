@@ -15,12 +15,18 @@ class ConnectFourEnv(gym.Env):
         # Define the action and observation space according to gym's API
         self.action_space = gym.spaces.Discrete(7)
         self.observation_space = gym.spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.float32)
+        # Variables to track the last move
+        self.last_row = None
+        self.last_col = None
 
     def reset(self):
         # Reset the board and randomly select which player starts
         self.board = torch.zeros((6, 7), dtype=torch.float32)
         self.current_player = 1
         self.winner = None
+        # Reset last move
+        self.last_row = None
+        self.last_col = None
         # Return initial observation
         return self.board
 
@@ -34,6 +40,9 @@ class ConnectFourEnv(gym.Env):
         for row in range(5, -1, -1):
             if self.board[row][action] == 0:
                 self.board[row][action] = self.current_player
+                # Update last move
+                self.last_row = row
+                self.last_col = action
                 break
         else:
             # If the column is full, return a penalty
@@ -110,6 +119,9 @@ class ConnectFourEnv(gym.Env):
     def get_valid_actions(self):
         return [col for col in range(self.board.shape[1]) if self.board[0, col] == 0]
     
+    def get_last_move(self):
+        return self.last_row, self.last_col
+
     def clone(self):
         new_env = ConnectFourEnv()
         new_env.board = self.board.clone()  # Assuming you have a 'clone' method in your torch.Tensor object
