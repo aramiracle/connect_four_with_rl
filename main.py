@@ -139,31 +139,43 @@ class ConnectFour(QMainWindow):
                                             "Choose an agent:", ["DQN", "Hybrid"], 0, False)
         if ok and agent_type:
             if agent_type == "DQN":
-                self.agent = DQNAgent(ConnectFourEnv())
-                self.load_agent('saved_agents/dqn_agents_after_vs_agent_train.pth')  # Corrected file name
+                if self.current_player == 1:
+                    self.agent = DQNAgent(ConnectFourEnv())
+                    self.load_agent('saved_agents/dqn_agents_after_train.pth', player=2)
+                else:
+                    self.agent = DQNAgent(ConnectFourEnv())
+                    self.load_agent('saved_agents/dqn_agents_after_train.pth', player=1)
             elif agent_type == "Hybrid":
-                self.agent = HybridAgent(ConnectFourEnv())
-                self.load_agent('saved_agents/hybrid_agents_after_vs_agent_train.pth')  # Adjust the file name if necessary
+                if self.current_player == 1:
+                    self.agent = HybridAgent(ConnectFourEnv())
+                    self.load_agent('saved_agents/hybrid_agents_after_train.pth', player=2)
+                else:
+                    self.agent = HybridAgent(ConnectFourEnv())
+                    self.load_agent('saved_agents/hybrid_agents_after_train.pth', player=1)
 
-
-    def load_agent(self, filepath):
+    def load_agent(self, filepath, player):
         try:
-            # Load the agent based on its type
+            # Load the agent based on its type and player
             if isinstance(self.agent, DQNAgent):
                 # Load DQN agent
                 checkpoint = torch.load(filepath)
-                # Load the state of the model, target model, and optimizer
-                self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])  # Adjust for Player 1 or Player 2
-                self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])  # Adjust for Player 1 or Player 2
-                self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])  # Adjust for Player 1 or Player 2
+                # Load the state of the model, target model, and optimizer based on the player
+                self.agent.model.load_state_dict(checkpoint[f'model_state_dict_player{player}'])
+                self.agent.target_model.load_state_dict(checkpoint[f'target_model_state_dict_player{player}'])
+                self.agent.optimizer.load_state_dict(checkpoint[f'optimizer_state_dict_player{player}'])
             elif isinstance(self.agent, HybridAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
-                self.agent.dqn_agent.model.load_state_dict(checkpoint['model_state_dict_player1'])  # Adjust for Player 1 or Player 2
-                self.agent.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])  # Adjust for Player 1 or Player 2
-                self.agent.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])  # Adjust for Player 1 or Player 2
+                if player == 1:
+                    self.agent.dqn_agent_player1.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.dqn_agent_player1.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
+                    self.agent.dqn_agent_player1.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])
+                elif player == 2:
+                    self.agent.dqn_agent_player2.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.dqn_agent_player2.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
+                    self.agent.dqn_agent_player2.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
             # Display a success message
-            self.status_label.setText(f"{type(self.agent).__name__} loaded successfully.")
+            self.status_label.setText(f"{type(self.agent).__name__} loaded successfully for Player {player}.")
             self.play_button.setDisabled(False)
         except FileNotFoundError:
             # Display an error message if the file is not found

@@ -12,16 +12,22 @@ class HybridAgent:
     def __init__(self, env, num_simulation=10):
         self.env = env
         self.num_simulations = num_simulation
-        self.dqn_agent = DQNAgent(self.env)
-        self.mcts_agent = MCTSAgent(self.env, dqn_model=self.dqn_agent.model)
+        self.dqn_agent_player1 = DQNAgent(self.env)
+        self.dqn_agent_player2 = DQNAgent(self.env)  # Create a separate instance for player2
+        self.mcts_agent = MCTSAgent(self.env, dqn_model=self.dqn_agent_player1.model)
 
     def load_pretrained_dqn_model(self, filepath):
         checkpoint = torch.load(filepath)
-        self.dqn_agent.model.load_state_dict(checkpoint['model_state_dict'])
-        self.dqn_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        # self.dqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict'])
+        self.dqn_agent_player1.model.load_state_dict(checkpoint['model_state_dict_player1'])
+        self.dqn_agent_player1.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
+        self.dqn_agent_player1.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])
 
-    def select_action(self, state, use_mcts=True):
+        # Load player2's models
+        self.dqn_agent_player2.model.load_state_dict(checkpoint['model_state_dict_player2'])
+        self.dqn_agent_player2.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
+        self.dqn_agent_player2.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
+
+    def select_action(self, state, player, use_mcts=True):
         if use_mcts:
             # Use a copy of the environment for MCTS to prevent altering the main environment
             temp_env = copy.deepcopy(self.env)
@@ -30,44 +36,62 @@ class HybridAgent:
         else:
             # Use DQN to exploit knowledge and choose an action
             epsilon = 0
-            return self.dqn_agent.select_action(state, epsilon)
+            if player == 1:
+                return self.dqn_agent_player1.select_action(state, epsilon)
+            else:
+                return self.dqn_agent_player2.select_action(state, epsilon)
 
-    def train(self, num_episodes):
-        for episode in tqdm(range(num_episodes)):
-            state = self.env.reset()
-            done = False
+def agent_vs_agent_train(agents, env, num_episodes=1000):
 
-            while not done:
-                action = self.select_action(state)
-                next_state, reward, done, _ = self.env.step(action)
+    for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
+        states = [env.reset(), env.reset()]
+        total_rewards = [0, 0]
+        done = False
 
-                # Train DQN with experiences collected from MCTS
-                self.dqn_agent.train_step()
-
-                state = next_state
-                if done:
-                    break
-
-            # Periodically update the DQN model used within MCTS
-            if episode % self.dqn_agent.target_update_frequency == 0:
-                self.mcts_agent.dqn_model.load_state_dict(self.dqn_agent.model.state_dict())
+        while not done:
+            for i in range(len(agents)):
+                action = agents[i].select_action(state=states[i], player=i+1, use_mcts=True)
+                next_state, reward, done, _ = env.step(action)
+                total_rewards[i] += reward
+                states[i] = next_state
 
 
-if __name__=='__main__':
+            if done:
+                total_rewards[1 - i] = -total_rewards[i]
+                break
+
+        # Batch processing of experiences for each agent
+        for agent in agents:
+            agent.dqn_agent_player1.train_step()
+            agent.dqn_agent_player2.train_step()
+            agent.mcts_agent.dqn_model.load_state_dict(agent.dqn_agent_player1.model.state_dict())
+
+        tqdm.write(
+            f"Episode: {episode}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}"
+        )
+
+    env.close()
+
+
+if __name__ == "__main__":
     env = ConnectFourEnv()
-    hybrid_agent = HybridAgent(env, num_simulation=30)
 
-    # Load the pre-trained DQN model
-    hybrid_agent.load_pretrained_dqn_model('saved_agents/dqn_agent_after_training.pth')
+    # Hybrid Agents
+    hybrid_agents = [HybridAgent(env, num_simulation=30) for _ in range(2)]
 
+    # Agent vs Agent Training
+    agent_vs_agent_train(hybrid_agents, env, num_episodes=100)
 
-    # Train the DQN agent
-    num_episodes = 1
-    hybrid_agent.train(num_episodes=num_episodes)
+    # Save the trained hybrid agents
+    torch.save(
+        {
+            "model_state_dict_player1": hybrid_agents[0].dqn_agent_player1.model.state_dict(),
+            "target_model_state_dict_player1": hybrid_agents[0].dqn_agent_player1.target_model.state_dict(),
+            "optimizer_state_dict_player1": hybrid_agents[0].dqn_agent_player1.optimizer.state_dict(),
+            "model_state_dict_player2": hybrid_agents[1].dqn_agent_player2.model.state_dict(),
+            "target_model_state_dict_player2": hybrid_agents[1].dqn_agent_player2.target_model.state_dict(),
+            "optimizer_state_dict_player2": hybrid_agents[1].dqn_agent_player2.optimizer.state_dict(),
+        },
+        "saved_agents/hybrid_agents_after_train.pth",
+    )
 
-    # Save the DQN agent's state after training
-    torch.save({
-    'model_state_dict': hybrid_agent.dqn_agent.model.state_dict(),
-    'target_model_state_dict': hybrid_agent.dqn_agent.target_model.state_dict(),
-    'optimizer_state_dict': hybrid_agent.dqn_agent.optimizer.state_dict(),
-    }, 'saved_agents/hybrid_agent_after_training.pth')

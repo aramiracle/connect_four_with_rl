@@ -52,7 +52,7 @@ class ExperienceReplayBuffer:
 # Define the DQN agent
 
 class DQNAgent:
-    def __init__(self, env, buffer_capacity=100000, batch_size=64, target_update_frequency=10):
+    def __init__(self, env, buffer_capacity=1000000, batch_size=64, target_update_frequency=10):
         self.env = env
         self.model = DQN()
         self.target_model = DQN()
@@ -116,61 +116,35 @@ class DQNAgent:
 
             self.num_training_steps += 1
 
-    def train(self, num_episodes, epsilon_start=1.0, epsilon_final=0.05, epsilon_decay=0.995, player=1):
-        epsilon = epsilon_start
 
-        for episode in tqdm(range(num_episodes), desc=f"Training Player {player}", unit="episode"):
-            state = self.env.reset()
-            done = False
-            total_reward = 0
+def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0.9995):
+    epsilon = epsilon_start
 
-            while not done:
-                action = self.select_action(state, epsilon)
-                next_state, reward, done, _ = self.env.step(action)
-                self.buffer.add(Experience(state, action, reward, next_state, done))
-                state = next_state
-                total_reward += reward
-
-                self.train_step()
-
-            tqdm.write(f"Player {player}, Episode: {episode}, Total Reward: {total_reward:.4f}, Epsilon: {epsilon:.2f}")
-
-            # Decay epsilon at the end of each episode
-            epsilon = max(epsilon_final, epsilon * epsilon_decay)
-
-
-def agent_vs_agent_train(agent1, agent2, env, num_episodes=1000):
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
-        state_player1 = env.reset()
-        state_player2 = env.reset()
-
+        states = [env.reset(), env.reset()]
+        total_rewards = [0, 0]
         done = False
-        total_reward_player1 = 0
-        total_reward_player2 = 0
 
         while not done:
-            # Player 1's turn
-            action_player1 = agent1.select_action(state_player1, epsilon=0.1)  # Add a small exploration during training
-            next_state_player1, reward_player1, done, _ = env.step(action_player1)
-            total_reward_player1 += reward_player1
-            agent1.buffer.add(Experience(state_player1, action_player1, reward_player1, next_state_player1, done))
-            state_player1 = next_state_player1
+            for i in range(len(agents)):
+                action = agents[i].select_action(states[i], epsilon)
+                next_state, reward, done, _ = env.step(action)
+                total_rewards[i] += reward
+                agents[i].buffer.add(Experience(states[i], action, reward, next_state, done))
+                states[i] = next_state
 
             if done:
+                total_rewards[1 - i] = - total_rewards[i]
                 break
 
-            # Player 2's turn
-            action_player2 = agent2.select_action(state_player2, epsilon=0.1)  # Add a small exploration during training
-            next_state_player2, reward_player2, done, _ = env.step(action_player2)
-            total_reward_player2 += reward_player2
-            agent2.buffer.add(Experience(state_player2, action_player2, reward_player2, next_state_player2, done))
-            state_player2 = next_state_player2
+        # Batch processing of experiences for each agent
+        for agent in agents:
+            agent.train_step()
 
-        # Train both agents
-        agent1.train_step()
-        agent2.train_step()
+        tqdm.write(f"Episode: {episode}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}, Epsilon: {epsilon:.2f}")
 
-        tqdm.write(f"Episode: {episode}, Total Reward Player 1: {total_reward_player1:.4f}, Total Reward Player 2: {total_reward_player2:.4f}")
+        # Decay epsilon for the next episode
+        epsilon = max(epsilon_final, epsilon * epsilon_decay)
 
     env.close()
 
@@ -178,25 +152,18 @@ def agent_vs_agent_train(agent1, agent2, env, num_episodes=1000):
 if __name__ == '__main__':
     env = ConnectFourEnv()
 
-    # Player 1
-    dqn_agent_player1 = DQNAgent(env)
-    num_episodes = 1000
-    dqn_agent_player1.train(num_episodes=num_episodes, player=1)
-
-    # Player 2
-    dqn_agent_player2 = DQNAgent(env)
-    num_episodes = 1000
-    dqn_agent_player2.train(num_episodes=num_episodes, player=2)
+    # Players
+    dqn_agents = [DQNAgent(env), DQNAgent(env)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(dqn_agent_player1, dqn_agent_player2, env, num_episodes=10000)
+    agent_vs_agent_train(dqn_agents, env, num_episodes=10000)
 
     # Save the trained agents
     torch.save({
-        'model_state_dict_player1': dqn_agent_player1.model.state_dict(),
-        'target_model_state_dict_player1': dqn_agent_player1.target_model.state_dict(),
-        'optimizer_state_dict_player1': dqn_agent_player1.optimizer.state_dict(),
-        'model_state_dict_player2': dqn_agent_player2.model.state_dict(),
-        'target_model_state_dict_player2': dqn_agent_player2.target_model.state_dict(),
-        'optimizer_state_dict_player2': dqn_agent_player2.optimizer.state_dict(),
-    }, 'saved_agents/dqn_agents_after_vs_agent_train.pth')
+        'model_state_dict_player1': dqn_agents[0].model.state_dict(),
+        'target_model_state_dict_player1': dqn_agents[0].target_model.state_dict(),
+        'optimizer_state_dict_player1': dqn_agents[0].optimizer.state_dict(),
+        'model_state_dict_player2': dqn_agents[1].model.state_dict(),
+        'target_model_state_dict_player2': dqn_agents[1].target_model.state_dict(),
+        'optimizer_state_dict_player2': dqn_agents[1].optimizer.state_dict(),
+    }, 'saved_agents/dqn_agents_after_train.pth')

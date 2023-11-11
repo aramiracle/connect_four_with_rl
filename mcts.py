@@ -64,8 +64,12 @@ class MCTSAgent:
             node = node.parent
 
     def get_best_action(self, root):
-        best_child = max(root.children, key=lambda child: child.total_reward / child.visits)
-        return best_child.action
+        if root.children:
+            best_child = max(root.children, key=lambda child: child.total_reward / child.visits)
+            return best_child.action
+        else:
+            # Handle the case when there are no children (e.g., raise an exception or return a default action)
+            return None 
 
 class Node:
     def __init__(self, env, parent=None, action=None):
