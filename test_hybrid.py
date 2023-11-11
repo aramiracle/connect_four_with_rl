@@ -8,19 +8,19 @@ class RandomBot:
     def __init__(self, env):
         self.env = env
 
-    def select_action(self, state, epsilon):
+    def select_action(self, state, epsilon, use_mcts):
         available_actions = [col for col in range(self.env.action_space.n) if self.env.board[0][col] == 0]
         return random.choice(available_actions) if available_actions else None
 
-def simulate_game(env, player1, player2):
+def simulate_game(env, player1, player2, use_mcts=True):
     """Simulates a single game between two AI agents."""
     state = env.reset()
     done = False
     while not done:
         if env.current_player == 1:
-            action = player1.select_action(state, 1)
+            action = player1.select_action(state, 1, use_mcts=use_mcts)
         else:
-            action = player2.select_action(state, 2)
+            action = player2.select_action(state, 2, use_mcts=use_mcts)
         state, _, done, _ = env.step(action)
     return env.winner
 
@@ -69,10 +69,7 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
     draws = 0
 
     for _ in tqdm(range(num_games), desc='AI vs AI'):
-        if random.choice([True, False]):  # Randomly decide which player goes first
-            winner = simulate_game(env, ai_agent1, ai_agent2)
-        else:
-            winner = simulate_game(env, ai_agent2, ai_agent1)
+        winner = simulate_game(env, ai_agent1, ai_agent2, use_mcts=True)
 
         if winner == 1:
             ai1_wins += 1
@@ -98,7 +95,7 @@ if __name__ == '__main__':
 
     # Test scenarios
     ai_vs_random_results = test_ai_vs_random(env, ai_agent_player1, num_games=100)
-    random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player1, num_games=100)
+    random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player2, num_games=100)
     ai_vs_ai_results = test_ai_vs_ai(env, ai_agent_player1, ai_agent_player2, num_games=100)
 
     # Print results

@@ -69,10 +69,7 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
     draws = 0
 
     for _ in tqdm(range(num_games), desc='AI vs AI'):
-        if random.choice([True, False]):  # Randomly decide which player goes first
-            winner = simulate_game(env, ai_agent1, ai_agent2)
-        else:
-            winner = simulate_game(env, ai_agent2, ai_agent1)
+        winner = simulate_game(env, ai_agent1, ai_agent2)
 
         if winner == 1:
             ai1_wins += 1
@@ -97,7 +94,7 @@ if __name__ == '__main__':
 
     # Test scenarios
     ai_vs_random_results = test_ai_vs_random(env, ai_agent_player1, num_games=1000)
-    random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player1, num_games=1000)
+    random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player2, num_games=1000)
     ai_vs_ai_results = test_ai_vs_ai(env, ai_agent_player1, ai_agent_player2, num_games=1000)
 
     # Print results

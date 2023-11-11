@@ -109,3 +109,10 @@ class ConnectFourEnv(gym.Env):
     
     def get_valid_actions(self):
         return [col for col in range(self.board.shape[1]) if self.board[0, col] == 0]
+    
+    def clone(self):
+        new_env = ConnectFourEnv()
+        new_env.board = self.board.clone()  # Assuming you have a 'clone' method in your torch.Tensor object
+        new_env.current_player = self.current_player
+        new_env.winner = self.winner
+        return new_env

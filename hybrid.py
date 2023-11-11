@@ -9,12 +9,12 @@ import copy
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
 class HybridAgent:
-    def __init__(self, env, num_simulation=10):
+    def __init__(self, env, num_simulation=5):
         self.env = env
         self.num_simulations = num_simulation
         self.dqn_agent_player1 = DQNAgent(self.env)
         self.dqn_agent_player2 = DQNAgent(self.env)  # Create a separate instance for player2
-        self.mcts_agent = MCTSAgent(self.env, dqn_model=self.dqn_agent_player1.model)
+        self.mcts_agent = MCTSAgent(self.env)
 
     def load_pretrained_dqn_model(self, filepath):
         checkpoint = torch.load(filepath)
@@ -27,11 +27,9 @@ class HybridAgent:
         self.dqn_agent_player2.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
         self.dqn_agent_player2.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
 
-    def select_action(self, state, player, use_mcts=True):
+    def select_action(self, state, player, epsilon=0, use_mcts=True):
         if use_mcts:
-            # Use a copy of the environment for MCTS to prevent altering the main environment
-            temp_env = copy.deepcopy(self.env)
-            action = self.mcts_agent.select_action(temp_env, num_simulations=self.num_simulations)
+            action = self.mcts_agent.select_action(sim_env=self.env, num_simulations=self.num_simulations)
             return action
         else:
             # Use DQN to exploit knowledge and choose an action
@@ -56,15 +54,13 @@ def agent_vs_agent_train(agents, env, num_episodes=1000):
                 states[i] = next_state
 
 
-            if done:
-                total_rewards[1 - i] = -total_rewards[i]
-                break
+                if done:
+                    total_rewards[1 - i] = -total_rewards[i]
+                    break
 
-        # Batch processing of experiences for each agent
-        for agent in agents:
-            agent.dqn_agent_player1.train_step()
-            agent.dqn_agent_player2.train_step()
-            agent.mcts_agent.dqn_model.load_state_dict(agent.dqn_agent_player1.model.state_dict())
+        
+        agents[0].dqn_agent_player1.train_step()
+        agents[1].dqn_agent_player2.train_step()
 
         tqdm.write(
             f"Episode: {episode}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}"
@@ -80,7 +76,7 @@ if __name__ == "__main__":
     hybrid_agents = [HybridAgent(env, num_simulation=30) for _ in range(2)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(hybrid_agents, env, num_episodes=100)
+    agent_vs_agent_train(hybrid_agents, env, num_episodes=1)
 
     # Save the trained hybrid agents
     torch.save(

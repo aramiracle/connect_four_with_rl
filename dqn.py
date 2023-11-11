@@ -156,7 +156,7 @@ if __name__ == '__main__':
     dqn_agents = [DQNAgent(env), DQNAgent(env)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(dqn_agents, env, num_episodes=10000)
+    agent_vs_agent_train(dqn_agents, env, num_episodes=100000)
 
     # Save the trained agents
     torch.save({

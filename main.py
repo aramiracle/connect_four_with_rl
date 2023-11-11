@@ -106,12 +106,13 @@ class ConnectFour(QMainWindow):
 
     def ai_select_move(self):
         if isinstance(self.agent, HybridAgent):
-            return self.agent.select_action(self.agent.env.board, use_mcts=True)
+            return self.agent.select_action(self.agent.env.board, player=self.current_player, use_mcts=True)
         elif isinstance(self.agent, DQNAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0.0)
         else:
             self.status_label.setText("No agent is loaded.")
             return None
+
 
     def update_game_state(self, action):
         for r in range(5, -1, -1):
