@@ -30,15 +30,20 @@ class HybridAgent:
     def select_action(self, state, player, epsilon=0, use_mcts=True):
         if use_mcts:
             action = self.mcts_agent.select_action(num_simulations=self.num_simulations)
-            return action
-        else:
-            # Use DQN to exploit knowledge and choose an action
-            epsilon = 0
-            if player == 1:
-                return self.dqn_agent_player1.select_action(state, epsilon)
+            if action is not None:
+                return action
             else:
-                return self.dqn_agent_player2.select_action(state, epsilon)
+                # Handle the case where MCTS fails to find a valid action
+                print("MCTS failed to find a valid action. Using DQN instead.")
+                use_mcts = False
 
+        # Use DQN to exploit knowledge and choose an action
+        epsilon = 0
+        if player == 1:
+            return self.dqn_agent_player1.select_action(state, epsilon)
+        else:
+            return self.dqn_agent_player2.select_action(state, epsilon)
+        
 def agent_vs_agent_train(agents, env, num_episodes=1000):
 
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):

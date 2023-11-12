@@ -25,7 +25,7 @@ class MCTSAgent:
         child_node = Node(new_env, parent=node, action=action)
         node.children.append(child_node)
 
-        if depth > 1 and not child_node.is_terminal():
+        if depth > 1 and not node.is_terminal():
             for _ in range(depth - 1):
                 child_node = self.expand(child_node, 1)
                 if child_node.is_terminal() and child_node.env.get_result() == 1:
@@ -36,24 +36,33 @@ class MCTSAgent:
         return child_node
 
     def select(self, node, depth):
-        while not node.is_terminal():
+        while True:  # Change the termination condition to a loop
             if not node.children:
                 return self.expand(node, depth)
+
             if not all(child.visits for child in node.children):
                 return self.expand(node, depth)
             else:
-                valid_children = [child for child in node.children if not getattr(child, 'skip_parent', False)]
-                if valid_children:
-                    node = self.get_best_child(node)
-                    # Check if the opponent has a winning move after this action
-                    if not self.has_winning_move_after_action(node):
-                        return node
-                    else:
-                        # Mark the parent node to skip in subsequent selections
-                        node.skip_parent = True
-                else:
-                    return None
+                valid_children = [child for child in node.children if not child.skip_parent]
+                if not valid_children:
+                    print("No valid children found!")
+                    node.env.render()
+                    return random.choice([child for child in node.children if child.skip_parent])
 
+                node = self.get_best_child(node)
+
+                # Check if the opponent has a winning move after this action
+                if not self.has_winning_move_after_action(node):
+                    return node
+                else:
+                    # Mark the parent node to skip in subsequent selections
+                    node.skip_parent = True
+
+                if depth > 1 and (node.is_terminal() or node.env.is_terminal()):  
+                    # Check terminal condition after updating node
+                    print("Node is terminal!")
+                    return node  # Return the terminal node without performing a rollout
+            
     def has_winning_move_after_action(self, node):
         temp_env = copy.deepcopy(node.env)
         temp_env.step(node.action)  # Simulate the action
@@ -61,11 +70,11 @@ class MCTSAgent:
         return temp_env.check_win(row, col)
 
     def get_best_child(self, node):
-        valid_children = [child for child in node.children if not getattr(child, 'skip_parent', False)]
+        valid_children = [child for child in node.children if not child.skip_parent]
         
         if valid_children:
-            return max(valid_children, key=lambda child: child.total_reward / child.visits +
-                    self.exploration_weight * math.sqrt(2 * math.log(node.visits) / child.visits))
+            return max(valid_children, key=lambda child: (child.total_reward / child.visits) +
+                        self.exploration_weight * math.sqrt(2 * math.log(node.visits) / child.visits) if child.visits != 0 else math.inf)
         else:
             return None
 
@@ -79,7 +88,7 @@ class MCTSAgent:
     def backpropagate(self, node, reward):
         while node is not None:
             node.visits += 1
-            node.total_reward += reward
+            node.total_reward += reward  # Accumulate total rewards
             node = node.parent
 
     def get_best_action(self, root):

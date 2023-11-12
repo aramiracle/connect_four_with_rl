@@ -8,7 +8,7 @@ class RandomBot:
     def __init__(self, env):
         self.env = env
 
-    def select_action(self, state):
+    def select_action(self, state, epsilon):
         available_actions = [col for col in range(self.env.action_space.n) if self.env.board[0][col] == 0]
         return random.choice(available_actions) if available_actions else None
 
@@ -18,9 +18,9 @@ def simulate_game(env, player1, player2):
     done = False
     while not done:
         if env.current_player == 1:
-            action = player1.select_action(state)
+            action = player1.select_action(state, epsilon=0)
         else:
-            action = player2.select_action(state)
+            action = player2.select_action(state, epsilon=0)
         state, _, done, _ = env.step(action)
     return env.winner
 
