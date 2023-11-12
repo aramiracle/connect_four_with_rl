@@ -1,13 +1,8 @@
 from dqn import DQNAgent
 from mcts import MCTSAgent
 from environment import ConnectFourEnv
-from collections import namedtuple
 import torch
 from tqdm import tqdm
-import copy
-
-Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
-
 class HybridAgent:
     def __init__(self, env, num_simulation=2):
         self.env = env
@@ -29,7 +24,8 @@ class HybridAgent:
 
     def select_action(self, state, player, epsilon=0, use_mcts=True):
         if use_mcts:
-            action = self.mcts_agent.select_action(num_simulations=self.num_simulations)
+            action = self.mcts_agent.get_best_action()
+            print(action)
             if action is not None:
                 return action
             else:
@@ -43,9 +39,12 @@ class HybridAgent:
             return self.dqn_agent_player1.select_action(state, epsilon)
         else:
             return self.dqn_agent_player2.select_action(state, epsilon)
-        
-def agent_vs_agent_train(agents, env, num_episodes=1000):
 
+    def train_step(self):
+        self.dqn_agent_player1.train_step()
+        self.dqn_agent_player2.train_step()
+
+def agent_vs_agent_train(agents, env, num_episodes=1000):
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
         states = [env.reset(), env.reset()]
         total_rewards = [0, 0]
@@ -58,14 +57,12 @@ def agent_vs_agent_train(agents, env, num_episodes=1000):
                 total_rewards[i] += reward
                 states[i] = next_state
 
-
                 if done:
                     total_rewards[1 - i] = -total_rewards[i]
                     break
 
-        
-        agents[0].dqn_agent_player1.train_step()
-        agents[1].dqn_agent_player2.train_step()
+        agents[0].train_step()
+        agents[1].train_step()
 
         tqdm.write(
             f"Episode: {episode}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}"
@@ -73,15 +70,14 @@ def agent_vs_agent_train(agents, env, num_episodes=1000):
 
     env.close()
 
-
 if __name__ == "__main__":
     env = ConnectFourEnv()
 
     # Hybrid Agents
-    hybrid_agents = [HybridAgent(env, num_simulation=10) for _ in range(2)]
+    hybrid_agents = [HybridAgent(env, num_simulation=2) for _ in range(2)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(hybrid_agents, env, num_episodes=10)
+    agent_vs_agent_train(hybrid_agents, env, num_episodes=1)
 
     # Save the trained hybrid agents
     torch.save(
@@ -95,4 +91,3 @@ if __name__ == "__main__":
         },
         "saved_agents/hybrid_agents_after_train.pth",
     )
-

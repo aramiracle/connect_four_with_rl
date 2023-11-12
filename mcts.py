@@ -1,135 +1,74 @@
-import random
-import math
-import copy
-from environment import ConnectFourEnv
-
-class MCTSAgent:
-    def __init__(self, env, exploration_weight=1.0):
-        self.env = env
-        self.exploration_weight = exploration_weight
-
-    def select_action(self, num_simulations, depth=2):
-        root = Node(copy.deepcopy(self.env))
-        for sim in range(num_simulations):
-            print(f"Simulation {sim + 1}/{num_simulations}")
-
-            node = self.select(root, depth)
-
-            # Debugging print statements
-            print("Before step - Current state:")
-            # node.env.render()
-
-            # Make sure to call step to update the environment state
-            action = self.rollout(node.env)
-            print(f"Action taken in rollout: {action}")
-            self.backpropagate(node, action)
-
-            # Debugging print statements
-            print("After step - Updated state:")
-            # node.env.render()
-
-        return self.get_best_action(root)
-
-    def expand(self, node, depth):
-        actions = node.env.get_valid_actions()
-        action = random.choice(actions)
-        node.env.step(action)  # Update the environment state directly
-        child_node = Node(node.env, parent=node, action=action)
-        node.children.append(child_node)
-
-        if depth > 1 and not node.is_terminal():
-            for _ in range(depth - 1):
-                child_node = self.expand(child_node, 1)
-                if child_node.is_terminal() and child_node.env.get_result() == 1:
-                    # Mark the parent node to skip in subsequent selections
-                    node.skip_parent = True
-                    break
-
-        return child_node
-
-    def select(self, node, depth):
-        while True:
-            if not node.children:
-                return self.expand(node, depth)
-
-            if not all(child.visits for child in node.children):
-                return self.expand(node, depth)
-            else:
-                valid_children = [child for child in node.children if not child.skip_parent]
-                if not valid_children:
-                    return random.choice([child for child in node.children if child.skip_parent])
-
-                # Make sure to update the environment state
-                node.env.step(node.action)
-
-                node = self.get_best_child(node)
-
-                # Check if the opponent has a winning move after this action
-                if not self.has_winning_move_after_action(node):
-                    return node
-                else:
-                    # Mark the parent node to skip in subsequent selections
-                    node.skip_parent = True
-
-                if depth > 1 and (node.is_terminal() or node.env.is_terminal()):
-                    return node  # Return the terminal node without performing a rollout
-            
-    def has_winning_move_after_action(self, node):
-        temp_env = copy.deepcopy(node.env)
-        temp_env.step(node.action)  # Simulate the action
-        row, col = temp_env.get_last_move()
-        return temp_env.check_win(row, col)
-
-    def get_best_child(self, node):
-        valid_children = [child for child in node.children if not child.skip_parent]
-        
-        if valid_children:
-            return max(valid_children, key=lambda child: (child.total_reward / child.visits) +
-                        self.exploration_weight * math.sqrt(2 * math.log(node.visits) / child.visits) if child.visits != 0 else math.inf)
-        else:
-            return None
-
-    def rollout(self, env):
-        temp_env = copy.deepcopy(env)
-        while not temp_env.is_terminal():
-            valid_actions = temp_env.get_valid_actions()
-            action = random.choice(valid_actions)
-            temp_env.step(action)
-
-        return temp_env.get_result()
-
-    def backpropagate(self, node, reward):
-        while node is not None:
-            node.visits += 1
-            node.total_reward += reward  # Accumulate total rewards
-            node = node.parent
-
-    def get_best_action(self, root):
-        if root.children:
-            best_child = max(root.children, key=lambda child: child.total_reward / child.visits)
-            return best_child.action
-        else:
-            return None
+import numpy as np
+from environment import ConnectFourEnv  # Make sure to replace 'environment' with the actual module name
 
 class Node:
-    def __init__(self, env, parent=None, action=None):
-        self.env = env
+    def __init__(self, state, parent=None):
+        self.state = state
         self.parent = parent
         self.children = []
-        self.visits = 1
-        self.total_reward = 0.0
-        self.action = action
-        self.skip_parent = False  # Flag to skip this parent node in subsequent selections
+        self.visits = 0
+        self.value = 0
 
-    def is_terminal(self):
-        return self.env.is_terminal()
+def uct(node):
+    if node.visits == 0:
+        return float('inf')
+    return node.value / node.visits + np.sqrt(2 * np.log(node.parent.visits) / node.visits)
 
-if __name__ == '__main__':
+def select(node):
+    if not node.children:
+        return node
+
+    selected_node = max(node.children, key=uct)
+    return select(selected_node)
+
+def expand(node):
+    valid_actions = node.state.get_valid_actions()
+    for action in valid_actions:
+        child_state = node.state.clone()
+        child_state.step(action)
+        child_node = Node(child_state, parent=node)
+        node.children.append(child_node)
+    return np.random.choice(node.children)
+
+def simulate(node):
+    state = node.state.clone()
+    while not state.is_terminal():
+        valid_actions = state.get_valid_actions()
+        action = np.random.choice(valid_actions)
+        state.step(action)
+    return state.get_result()
+
+def backpropagate(node, result):
+    while node is not None:
+        node.visits += 1
+        node.value += result
+        node = node.parent
+
+class MCTSAgent:
+    def __init__(self, env, iterations=1000):
+        self.env = env
+        self.iterations = iterations
+
+    def get_best_action(self):
+        root_state = self.env.clone()
+        root_node = Node(root_state)
+
+        for _ in range(self.iterations):
+            node = select(root_node)
+            if not node.state.is_terminal():
+                node = expand(node)
+                result = simulate(node)
+            else:
+                result = node.state.get_result()
+
+            backpropagate(node, result)
+
+        best_action_node = max(root_node.children, key=lambda x: x.visits)
+        return best_action_node.state.get_last_move()[1]  # Get the column of the last move
+
+if __name__ == "__main__":
+    # Example of how to use MCTSAgent to get the best action
     env = ConnectFourEnv()
-    mcts_agent = MCTSAgent(env)
-
-    num_simulations = 100  # Adjust the number of simulations as needed
-    env.reset()
-    best_action = mcts_agent.select_action(num_simulations)
-
-    print(f"Best action: {best_action}")
+    mcts_agent = MCTSAgent(env, iterations=100)
+    best_action = mcts_agent.get_best_action()
+    print("Best Action:", best_action)

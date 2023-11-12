@@ -31,11 +31,6 @@ class ConnectFourEnv(gym.Env):
         return self.board
 
     def step(self, action):
-        # Process the player's action and update the game state
-        if self.winner is not None:
-            # If the game is over, return the final state
-            return self.board, 0, True, {}
-        
         # Place the current player's piece in the selected column
         for row in range(5, -1, -1):
             if self.board[row][action] == 0:
@@ -44,9 +39,6 @@ class ConnectFourEnv(gym.Env):
                 self.last_row = row
                 self.last_col = action
                 break
-        else:
-            # If the column is full, return a penalty
-            return self.board, -1, False, {}
 
         # Check for a win or a tie, and assign rewards accordingly
         if self.check_win(row, action):
