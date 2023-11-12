@@ -14,12 +14,12 @@ def uct(node):
         return float('inf')
     return node.value / node.visits + np.sqrt(2 * np.log(node.parent.visits) / node.visits)
 
-def select(node):
-    if not node.children:
+def select(node, depth):
+    if depth == 0 or not node.children:
         return node
 
     selected_node = max(node.children, key=uct)
-    return select(selected_node)
+    return select(selected_node, depth - 1)
 
 def expand(node):
     valid_actions = node.state.get_valid_actions()
@@ -30,45 +30,46 @@ def expand(node):
         node.children.append(child_node)
     return np.random.choice(node.children)
 
-def simulate(node):
+def simulate(node, depth):
     state = node.state.clone()
-    while not state.is_terminal():
+    while not state.is_terminal() and depth > 0:
         valid_actions = state.get_valid_actions()
         action = np.random.choice(valid_actions)
         state.step(action)
+        depth -= 1
     return state.get_result()
 
 def backpropagate(node, result):
     while node is not None:
         node.visits += 1
-        node.value += result
+        node.value += result if result is not None else 0
         node = node.parent
-
 class MCTSAgent:
-    def __init__(self, env, iterations=1000):
+    def __init__(self, env, num_simulationd=1000, depth=10):
         self.env = env
-        self.iterations = iterations
+        self.num_simulationd = num_simulationd
+        self.depth = depth
 
     def get_best_action(self):
         root_state = self.env.clone()
         root_node = Node(root_state)
 
-        for _ in range(self.iterations):
-            node = select(root_node)
+        for _ in range(self.num_simulationd):
+            node = select(root_node, self.depth)
             if not node.state.is_terminal():
                 node = expand(node)
-                result = simulate(node)
+                result = simulate(node, self.depth)
             else:
                 result = node.state.get_result()
 
             backpropagate(node, result)
 
-        best_action_node = max(root_node.children, key=lambda x: x.visits)
-        return best_action_node.state.get_last_move()[1]  # Get the column of the last move
+        best_child_node = max(root_node.children, key=lambda x: x.visits)
+        return best_child_node.state.get_last_move()[1]  # Get the column of the last move
 
 if __name__ == "__main__":
     # Example of how to use MCTSAgent to get the best action
     env = ConnectFourEnv()
-    mcts_agent = MCTSAgent(env, iterations=100)
+    mcts_agent = MCTSAgent(env, num_simulationd=100, depth=2)
     best_action = mcts_agent.get_best_action()
     print("Best Action:", best_action)
