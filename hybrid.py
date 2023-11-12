@@ -81,7 +81,7 @@ if __name__ == "__main__":
     hybrid_agents = [HybridAgent(env, num_simulation=10) for _ in range(2)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(hybrid_agents, env, num_episodes=1)
+    agent_vs_agent_train(hybrid_agents, env, num_episodes=10)
 
     # Save the trained hybrid agents
     torch.save(

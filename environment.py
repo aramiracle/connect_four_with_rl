@@ -124,7 +124,9 @@ class ConnectFourEnv(gym.Env):
 
     def clone(self):
         new_env = ConnectFourEnv()
-        new_env.board = self.board.clone()  # Assuming you have a 'clone' method in your torch.Tensor object
+        new_env.board = self.board.clone()
         new_env.current_player = self.current_player
         new_env.winner = self.winner
+        new_env.last_row = self.last_row
+        new_env.last_col = self.last_col
         return new_env
