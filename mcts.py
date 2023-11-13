@@ -45,16 +45,16 @@ def backpropagate(node, result):
         node.value += result if result is not None else 0
         node = node.parent
 class MCTSAgent:
-    def __init__(self, env, num_simulationd=1000, depth=10):
+    def __init__(self, env, num_simulations=100, depth=10):
         self.env = env
-        self.num_simulationd = num_simulationd
+        self.num_simulations = num_simulations
         self.depth = depth
 
     def get_best_action(self):
         root_state = self.env.clone()
         root_node = Node(root_state)
 
-        for _ in range(self.num_simulationd):
+        for _ in range(self.num_simulations):
             node = select(root_node, self.depth)
             if not node.state.is_terminal():
                 node = expand(node)
@@ -70,6 +70,6 @@ class MCTSAgent:
 if __name__ == "__main__":
     # Example of how to use MCTSAgent to get the best action
     env = ConnectFourEnv()
-    mcts_agent = MCTSAgent(env, num_simulationd=100, depth=2)
+    mcts_agent = MCTSAgent(env, num_simulations=100, depth=2)
     best_action = mcts_agent.get_best_action()
     print("Best Action:", best_action)

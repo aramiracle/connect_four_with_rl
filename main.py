@@ -33,6 +33,7 @@ class ConnectFour(QMainWindow):
                 button = QPushButton()
                 button.setFixedSize(100, 100)
                 button.clicked.connect(partial(self.on_click, col))
+                button.setEnabled(False)
                 self.grid.addWidget(button, row, col)
                 self.board[row][col] = button
 
@@ -61,6 +62,11 @@ class ConnectFour(QMainWindow):
         self.current_player = 1 if self.player1_button.isChecked() else 2
         self.play_button.setDisabled(False)
 
+    def enable_board_buttons(self):
+        for row in range(6):
+            for col in range(7):
+                self.board[row][col].setEnabled(True)
+
     def start_game(self):
         self.game_over = False
         self.status_label.setText("")
@@ -68,6 +74,10 @@ class ConnectFour(QMainWindow):
         for row in range(6):
             for col in range(7):
                 self.board[row][col].setStyleSheet("")
+        
+        # Enable the board buttons at the start of the game
+        self.enable_board_buttons()
+
         self.current_player = 1 if self.player1_button.isChecked() else 2
         if self.current_player == 2 and self.agent:
             self.play_ai_turn()
@@ -108,7 +118,7 @@ class ConnectFour(QMainWindow):
         if isinstance(self.agent, HybridAgent):
             return self.agent.select_action(self.agent.env.board, player=self.current_player, use_mcts=True)
         elif isinstance(self.agent, DQNAgent):
-            return self.agent.select_action(self.agent.env.board)
+            return self.agent.select_action(self.agent.env.board, epsilon=0)
         else:
             self.status_label.setText("No agent is loaded.")
             return None

@@ -4,11 +4,11 @@ from environment import ConnectFourEnv
 import torch
 from tqdm import tqdm
 class HybridAgent:
-    def __init__(self, env, num_simulation=20, depth=2):
+    def __init__(self, env, num_simulations=100, depth=2):
         self.env = env
         self.dqn_agent_player1 = DQNAgent(self.env)
         self.dqn_agent_player2 = DQNAgent(self.env)  # Create a separate instance for player2
-        self.mcts_agent = MCTSAgent(self.env, num_simulationd=num_simulation, depth=depth)
+        self.mcts_agent = MCTSAgent(self.env, num_simulations=num_simulations, depth=depth)
 
     def load_pretrained_dqn_model(self, filepath):
         checkpoint = torch.load(filepath)
@@ -72,7 +72,7 @@ if __name__ == "__main__":
     env = ConnectFourEnv()
 
     # Hybrid Agents
-    hybrid_agents = [HybridAgent(env, num_simulation=100, depth=2) for _ in range(2)]
+    hybrid_agents = [HybridAgent(env, num_simulations=1000, depth=2) for _ in range(2)]
 
     # Agent vs Agent Training
     agent_vs_agent_train(hybrid_agents, env, num_episodes=1)

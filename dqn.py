@@ -117,7 +117,7 @@ class DQNAgent:
             self.num_training_steps += 1
 
 
-def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0.9995):
+def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0.9999):
     epsilon = epsilon_start
 
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
@@ -134,6 +134,7 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
                 states[i] = next_state
 
             if done:
+                total_rewards[i] = abs(total_rewards[i]) if env.winner == 2 else -abs(total_rewards[i])
                 total_rewards[1 - i] = - total_rewards[i]
                 break
 
@@ -141,7 +142,7 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
         for agent in agents:
             agent.train_step()
 
-        tqdm.write(f"Episode: {episode}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}, Epsilon: {epsilon:.2f}")
+        tqdm.write(f"Episode: {episode}, Winner: {env.winner}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}, Epsilon: {epsilon:.2f}")
 
         # Decay epsilon for the next episode
         epsilon = max(epsilon_final, epsilon * epsilon_decay)
@@ -156,7 +157,7 @@ if __name__ == '__main__':
     dqn_agents = [DQNAgent(env), DQNAgent(env)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(dqn_agents, env, num_episodes=10000)
+    agent_vs_agent_train(dqn_agents, env, num_episodes=30000)
 
     # Save the trained agents
     torch.save({
