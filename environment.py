@@ -66,7 +66,7 @@ class ConnectFourEnv(gym.Env):
             for col in range(7):
                 if self.board[row, col] != 0 and self.check_win(row, col):
                     return True
-        return np.count_nonzero(self.board) == self.max_moves
+        return torch.count_nonzero(self.board) == self.max_moves
 
     # Check if there's a winner
     def check_win(self, row, col):

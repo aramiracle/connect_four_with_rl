@@ -132,11 +132,13 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
                 total_rewards[i] += reward
                 agents[i].buffer.add(Experience(states[i], action, reward, next_state, done))
                 states[i] = next_state
-
-            if done:
-                total_rewards[i] = abs(total_rewards[i]) if env.winner == 2 else -abs(total_rewards[i])
-                total_rewards[1 - i] = - total_rewards[i]
-                break
+                if done:
+                    if env.winner == 1:
+                        total_rewards[1] = -total_rewards[0]
+                    elif env.winner == 2:
+                        total_rewards[0] = -total_rewards[1]
+                    break
+    
 
         # Batch processing of experiences for each agent
         for agent in agents:
