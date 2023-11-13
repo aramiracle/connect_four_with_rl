@@ -7,30 +7,43 @@ from tqdm import tqdm
 import random
 from environment import ConnectFourEnv
 
-# Define the DQN model using PyTorch
-class DQN(nn.Module):
+# Define the Dueling DQN model using PyTorch
+class DuelingDQN(nn.Module):
     def __init__(self):
-        super(DQN, self).__init__()
-        # Adjust the input layer size for one-hot encoding with 3 different states
-        self.fc1 = nn.Linear(6 * 7 * 3, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, 7)
+        super(DuelingDQN, self).__init__()
+        self.fc1_value = nn.Linear(6 * 7 * 3, 256)
+        self.fc2_value = nn.Linear(256, 128)
+        self.fc3_value = nn.Linear(128, 64)
+        self.fc4_value = nn.Linear(64, 1)
+
+        self.fc1_advantage = nn.Linear(6 * 7 * 3, 256)
+        self.fc2_advantage = nn.Linear(256, 128)
+        self.fc3_advantage = nn.Linear(128, 64)
+        self.fc4_advantage = nn.Linear(64, 7)
 
     def forward(self, x):
         x = x.long()
-        # Apply one_hot encoding
         x = F.one_hot(x.to(torch.int64), num_classes=3).float()
-        # Flatten the tensor to the correct shape
         x = x.view(-1, 6 * 7 * 3)
-        # Pass through the network
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        return self.fc4(x)
+
+        # Value stream
+        x_value = F.relu(self.fc1_value(x))
+        x_value = F.relu(self.fc2_value(x_value))
+        x_value = F.relu(self.fc3_value(x_value))
+        value = self.fc4_value(x_value)
+
+        # Advantage stream
+        x_advantage = F.relu(self.fc1_advantage(x))
+        x_advantage = F.relu(self.fc2_advantage(x_advantage))
+        x_advantage = F.relu(self.fc3_advantage(x_advantage))
+        advantage = self.fc4_advantage(x_advantage)
+
+        # Combine value and advantage to get Q-values
+        q_values = value + (advantage - advantage.mean(dim=1, keepdim=True))
+
+        return q_values
 
 # Implement experience replay buffer
-
 Experience = namedtuple('Experience', ('state', 'action', 'reward', 'next_state', 'done'))
 
 class ExperienceReplayBuffer:
@@ -50,12 +63,11 @@ class ExperienceReplayBuffer:
         return len(self.buffer)
 
 # Define the DQN agent
-
 class DQNAgent:
     def __init__(self, env, buffer_capacity=1000000, batch_size=64, target_update_frequency=10):
         self.env = env
-        self.model = DQN()
-        self.target_model = DQN()
+        self.model = DuelingDQN()  # Change here
+        self.target_model = DuelingDQN()  # Change here
         self.target_model.load_state_dict(self.model.state_dict())
         self.buffer = ExperienceReplayBuffer(buffer_capacity)
         self.batch_size = batch_size
@@ -101,10 +113,12 @@ class DQNAgent:
             actions = torch.tensor(actions, dtype=torch.int64)
             dones = torch.tensor(dones, dtype=torch.float32)
 
+            # Use target model for action selection in Double Q-learning
+            target_actions = self.model(next_states).max(1)[1].unsqueeze(-1)
+            max_next_q_values = self.target_model(next_states).gather(1, target_actions).squeeze(-1)
+
             current_q_values = self.model(states).gather(1, actions.unsqueeze(-1)).squeeze(-1)
-            with torch.no_grad():
-                max_next_q_values = self.target_model(next_states).max(1)[0]
-                expected_q_values = rewards + (1 - dones) * 0.99 * max_next_q_values  # Assuming a gamma of 0.99
+            expected_q_values = rewards + (1 - dones) * 0.99 * max_next_q_values  # Assuming a gamma of 0.99
             loss = self.loss_fn(current_q_values, expected_q_values)
 
             self.optimizer.zero_grad()
@@ -115,7 +129,6 @@ class DQNAgent:
                 self.target_model.load_state_dict(self.model.state_dict())
 
             self.num_training_steps += 1
-
 
 def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0.9999):
     epsilon = epsilon_start
@@ -158,7 +171,7 @@ if __name__ == '__main__':
     dqn_agents = [DQNAgent(env), DQNAgent(env)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(dqn_agents, env, num_episodes=30000)
+    agent_vs_agent_train(dqn_agents, env, num_episodes=100000)
 
     # Save the trained agents
     torch.save({

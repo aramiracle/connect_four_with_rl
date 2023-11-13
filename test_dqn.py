@@ -1,7 +1,7 @@
 import torch
 import random
 from tqdm import tqdm
-from dqn import DQNAgent
+from ddqnd import DQNAgent
 from environment import ConnectFourEnv
 
 class RandomBot:
@@ -93,8 +93,8 @@ if __name__ == '__main__':
     ai_agent_player2.target_model.load_state_dict(checkpoint_player2['model_state_dict_player2'])
 
     # Test scenarios
-    ai_vs_random_results = test_ai_vs_random(env, ai_agent_player1, num_games=1000)
-    random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player2, num_games=1000)
+    ai_vs_random_results = test_ai_vs_random(env, ai_agent_player1, num_games=10000)
+    random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player2, num_games=10000)
     ai_vs_ai_results = test_ai_vs_ai(env, ai_agent_player1, ai_agent_player2, num_games=1000)
 
     # Print results
