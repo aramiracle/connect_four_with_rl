@@ -128,7 +128,7 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
         while not done:
             for i in range(len(agents)):
                 action = agents[i].select_action(states[i], epsilon)
-                next_state, reward, done, _ = env.step(action)
+                next_state, reward, done, info = env.step(action)
                 total_rewards[i] += reward
                 agents[i].buffer.add(Experience(states[i], action, reward, next_state, done))
                 states[i] = next_state
@@ -143,7 +143,7 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
         for agent in agents:
             agent.train_step()
 
-        tqdm.write(f"Episode: {episode}, Winner: {env.winner}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}, Epsilon: {epsilon:.2f}")
+        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}, Epsilon: {epsilon:.2f}")
 
         # Decay epsilon for the next episode
         epsilon = max(epsilon_final, epsilon * epsilon_decay)

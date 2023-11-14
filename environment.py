@@ -43,18 +43,21 @@ class ConnectFourEnv(gym.Env):
         # Check for a win or a tie, and assign rewards accordingly
         if self.check_win(row, action):
             self.winner = self.current_player
+            info = {'winner': f'Player {self.current_player}'}
             reward = 1.0
             done = True
         elif torch.count_nonzero(self.board) == self.max_moves:
             reward = (self.max_moves - 1) / self.max_moves
+            info = {'winner': f'Draw'}
             done = True
         else:
             reward = -1 / self.max_moves
+            info = {'winner': 'Game in not finished yet.'}
             done = False
 
         # Alternate turns
         self.current_player = 3 - self.current_player
-        return self.board, reward, done, {}
+        return self.board, reward, done, info
 
     def render(self):
         # Display the board to the console
