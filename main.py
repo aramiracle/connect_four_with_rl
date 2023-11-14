@@ -6,6 +6,7 @@ import torch
 
 from hybrid import HybridAgent
 from dqn import DQNAgent
+from ddqnd import DDQNDAgent
 from environment import ConnectFourEnv
 
 # Base class for Connect Four Game
@@ -119,6 +120,8 @@ class ConnectFour(QMainWindow):
             return self.agent.select_action(self.agent.env.board, player=self.current_player, use_mcts=True)
         elif isinstance(self.agent, DQNAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
+        elif isinstance(self.agent, DDQNDAgent):
+            return self.agent.select_action(self.agent.env.board, epsilon=0)
         else:
             self.status_label.setText("No agent is loaded.")
             return None
@@ -147,7 +150,7 @@ class ConnectFour(QMainWindow):
 
     def select_agent(self):
         agent_type, ok = QInputDialog.getItem(self, "Select Agent Type", 
-                                            "Choose an agent:", ["DQN", "Hybrid"], 0, False)
+                                            "Choose an agent:", ["DQN","DDQND", "Hybrid"], 0, False)
         if ok and agent_type:
             if agent_type == "DQN":
                 if self.current_player == 1:
@@ -163,6 +166,14 @@ class ConnectFour(QMainWindow):
                 else:
                     self.agent = HybridAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/hybrid_agents_after_train.pth', player=1)
+            elif agent_type == "DDQND":
+                if self.current_player == 1:
+                    self.agent = DDQNDAgent(ConnectFourEnv())
+                    self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=2)
+                else:
+                    self.agent = DDQNDAgent(ConnectFourEnv())
+                    self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=1)
+
 
     def load_agent(self, filepath, player):
         try:
@@ -170,10 +181,25 @@ class ConnectFour(QMainWindow):
             if isinstance(self.agent, DQNAgent):
                 # Load DQN agent
                 checkpoint = torch.load(filepath)
-                # Load the state of the model, target model, and optimizer based on the player
-                self.agent.model.load_state_dict(checkpoint[f'model_state_dict_player{player}'])
-                self.agent.target_model.load_state_dict(checkpoint[f'target_model_state_dict_player{player}'])
-                self.agent.optimizer.load_state_dict(checkpoint[f'optimizer_state_dict_player{player}'])
+                if player == 1:
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
+                    self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])
+                elif player == 2:
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
+                    self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
+            elif isinstance(self.agent, DDQNDAgent):
+                # Load Hybrid agent
+                checkpoint = torch.load(filepath)
+                if player == 1:
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
+                    self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])
+                elif player == 2:
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
+                    self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
             elif isinstance(self.agent, HybridAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)

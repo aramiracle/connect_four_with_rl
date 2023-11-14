@@ -63,7 +63,7 @@ class ExperienceReplayBuffer:
         return len(self.buffer)
 
 # Define the DQN agent
-class DQNAgent:
+class DDQNDAgent:
     def __init__(self, env, buffer_capacity=1000000, batch_size=64, target_update_frequency=10):
         self.env = env
         self.model = DuelingDQN()  # Change here
@@ -168,10 +168,10 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
 
     # Players
-    dqn_agents = [DQNAgent(env), DQNAgent(env)]
+    dqn_agents = [DDQNDAgent(env), DDQNDAgent(env)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(dqn_agents, env, num_episodes=100000)
+    agent_vs_agent_train(dqn_agents, env, num_episodes=30000)
 
     # Save the trained agents
     torch.save({
@@ -181,4 +181,4 @@ if __name__ == '__main__':
         'model_state_dict_player2': dqn_agents[1].model.state_dict(),
         'target_model_state_dict_player2': dqn_agents[1].target_model.state_dict(),
         'optimizer_state_dict_player2': dqn_agents[1].optimizer.state_dict(),
-    }, 'saved_agents/dqn_agents_after_train.pth')
+    }, 'saved_agents/ddqnd_agents_after_train.pth')
