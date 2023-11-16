@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 from torch.distributions import Categorical
 from environment import ConnectFourEnv
 from tqdm import tqdm
@@ -9,14 +10,17 @@ from tqdm import tqdm
 class PolicyValueNet(nn.Module):
     def __init__(self):
         super(PolicyValueNet, self).__init__()
-        self.fc1 = nn.Linear(6 * 7, 256)
+        self.fc1 = nn.Linear(6 * 7 * 3, 256)
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 64)
         self.fc_policy = nn.Linear(64, 7)  # Output for policy
         self.fc_value = nn.Linear(64, 1)   # Output for value
 
     def forward(self, x):
-        x = x.view(-1, 6 * 7)
+        x = x.long()
+        # Apply one_hot encoding
+        x = F.one_hot(x.to(torch.int64), num_classes=3).float()
+        x = x.view(-1, 6 * 7 * 3)
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
         x = torch.relu(self.fc3(x))
@@ -123,7 +127,7 @@ if __name__=='__main__':
     # Example usage:
     env = ConnectFourEnv()
     agent = A3CAgent(env, num_workers=4)
-    agent.train_async(num_episodes=10000)
+    agent.train_async(num_episodes=100000)
 
     # Save the trained model
     torch.save(agent.model.state_dict(), 'saved_agents/a3c_agent_after_train.pth')
