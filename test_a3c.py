@@ -94,17 +94,19 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
 if __name__ == '__main__':
     env = ConnectFourEnv()
 
-    # Load A3C agents
-    a3c_agent1 = A3CAgent(env, num_workers=1)
-    a3c_agent1.model.load_state_dict(torch.load('saved_agents/a3c_agent_after_train.pth'))
+    # Load AI agents
+    ai_agent_player1 = A3CAgent(env, num_workers=4)  # Use DQN class directly
+    checkpoint_player1 = torch.load('saved_agents/a3c_agents_after_train.pth')
+    ai_agent_player1.model.load_state_dict(checkpoint_player1['model_state_dict_player1'])
 
-    a3c_agent2 = A3CAgent(env, num_workers=1)
-    a3c_agent2.model.load_state_dict(torch.load('saved_agents/a3c_agent_after_train.pth'))
+    ai_agent_player2 = A3CAgent(env, num_workers=4)  # Use DQN class directly
+    checkpoint_player2 = torch.load('saved_agents/a3c_agents_after_train.pth')
+    ai_agent_player2.model.load_state_dict(checkpoint_player2['model_state_dict_player2'])
 
     # Test scenarios
-    ai_vs_random_results = test_ai_vs_random(env, a3c_agent1, num_games=1000)
-    random_vs_ai_results = test_random_bot_vs_ai(env, a3c_agent2, num_games=1000)
-    ai_vs_ai_results = test_ai_vs_ai(env, a3c_agent1, a3c_agent2, num_games=1000)
+    ai_vs_random_results = test_ai_vs_random(env, ai_agent_player1, num_games=10000)
+    random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player2, num_games=10000)
+    ai_vs_ai_results = test_ai_vs_ai(env, ai_agent_player1, ai_agent_player2, num_games=1000)
 
     # Print results
     print(f"AI vs Random Bot Results: AI Wins - {ai_vs_random_results[0]}, Random Bot Wins - {ai_vs_random_results[1]}, Draws - {ai_vs_random_results[2]}")

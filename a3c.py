@@ -122,12 +122,62 @@ class A3CAgent:
         dones = torch.tensor(rollout['dones'], dtype=torch.float32)
         values = torch.tensor(rollout['values'], dtype=torch.float32)
         return states, actions, rewards, next_states, dones, values
+    
+    def select_action(self, state):
+        with torch.no_grad():
+            policy_logits, _ = self.model(torch.tensor(state, dtype=torch.float32))
+            action_probs = torch.softmax(policy_logits, dim=0)
+            action = torch.multinomial(action_probs, 1).item()
+            return action
+
+def agent_vs_agent_train(agents, env, num_episodes=1000):
+    for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
+        states = [env.reset(), env.reset()]
+        total_rewards = [0, 0]
+        done = False
+
+        while not done:
+            for i in range(len(agents)):
+                agent = agents[i]
+                state = states[i]
+                action = agent.select_action(state)
+                next_state, reward, done, info = env.step(action)
+                total_rewards[i] += reward
+                states[i] = next_state
+                if done:
+                    if env.winner == 1:
+                        total_rewards[1] = -total_rewards[0]
+                    elif env.winner == 2:
+                        total_rewards[0] = -total_rewards[1]
+                    else:
+                        total_rewards = [0, 0]
+                    break
+
+        for agent in agents:
+            agent.train(agent.unpack_rollout(agent.run_episode()))
+
+        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}")
+
+    env.close()
 
 if __name__=='__main__':
     # Example usage:
     env = ConnectFourEnv()
     agent = A3CAgent(env, num_workers=4)
-    agent.train_async(num_episodes=100000)
+    agent.train_async(num_episodes=1000)
+
+    env = ConnectFourEnv()
+    agent1 = A3CAgent(env, num_workers=4)
+    agent2 = A3CAgent(env, num_workers=4)
+    agent1.model = agent.model
+    agent2.model = agent.model
+    agents = [agent1, agent2]
+    agent_vs_agent_train(agents, env, num_episodes=10000)
 
     # Save the trained model
-    torch.save(agent.model.state_dict(), 'saved_agents/a3c_agent_after_train.pth')
+    torch.save({
+        'model_state_dict_player1': agents[0].model.state_dict(),
+        'optimizer_state_dict_player1': agents[0].optimizer.state_dict(),
+        'model_state_dict_player2': agents[1].model.state_dict(),
+        'optimizer_state_dict_player2': agents[1].optimizer.state_dict(),
+    }, 'saved_agents/a3c_agents_after_train.pth')

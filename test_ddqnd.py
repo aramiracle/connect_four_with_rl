@@ -1,7 +1,7 @@
 import torch
 import random
 from tqdm import tqdm
-from dqn import DQNAgent
+from ddqnd import DDQNDAgent
 from environment import ConnectFourEnv
 
 class RandomBot:
@@ -11,7 +11,7 @@ class RandomBot:
     def select_action(self, state, epsilon):
         available_actions = [col for col in range(self.env.action_space.n) if self.env.board[0][col] == 0]
         return random.choice(available_actions) if available_actions else None
-
+    
 def simulate_game(env, player1, player2):
     """Simulates a single game between two AI agents."""
     state = env.reset()
@@ -84,12 +84,12 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
 
     # Load AI agents
-    ai_agent_player1 = DQNAgent(env)  # Use DQN class directly
-    checkpoint_player1 = torch.load('saved_agents/dqn_agents_after_train.pth')
+    ai_agent_player1 = DDQNDAgent(env)  # Use DQN class directly
+    checkpoint_player1 = torch.load('saved_agents/ddqnd_agents_after_train.pth')
     ai_agent_player1.target_model.load_state_dict(checkpoint_player1['model_state_dict_player1'])
 
-    ai_agent_player2 = DQNAgent(env)  # Use DQN class directly
-    checkpoint_player2 = torch.load('saved_agents/dqn_agents_after_train.pth')
+    ai_agent_player2 = DDQNDAgent(env)  # Use DQN class directly
+    checkpoint_player2 = torch.load('saved_agents/ddqnd_agents_after_train.pth')
     ai_agent_player2.target_model.load_state_dict(checkpoint_player2['model_state_dict_player2'])
 
     # Test scenarios
