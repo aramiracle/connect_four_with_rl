@@ -6,27 +6,32 @@ from torch.distributions import Categorical
 from environment import ConnectFourEnv
 from tqdm import tqdm
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class PolicyNetwork(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super(PolicyNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc1 = nn.Linear(input_size * 3, hidden_size)
         self.fc2 = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
+        x = x.long()
+        x = F.one_hot(x.to(torch.int64), num_classes=3).float()
+        x = x.view(-1, 6 * 7 * 3)        
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return F.softmax(x, dim=1)
 
 class PPO:
-    def __init__(self, state_dim, action_dim, hidden_size=64, learning_rate=0.001, gamma=0.99, clip_param=0.2, epochs=10):
-        self.policy = PolicyNetwork(state_dim, hidden_size, action_dim)
+    def __init__(self, state_dim, action_dim, hidden_size=32, learning_rate=0.0001, gamma=0.99, clip_param=0.1, epochs=10):
+        self.policy = PolicyNetwork(state_dim, hidden_size, action_dim).to(device)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate)
         self.gamma = gamma
         self.clip_param = clip_param
         self.epochs = epochs
 
     def select_action(self, state):
-        state = state.float().unsqueeze(0)
+        state = state.flatten().float().unsqueeze(0).to(device)
         probs = self.policy(state)
         m = Categorical(probs)
         action = m.sample()
@@ -34,7 +39,7 @@ class PPO:
 
     def update(self, states, actions, old_probs, rewards, dones):
         returns = self.compute_returns(rewards, dones)
-        states = torch.cat(states)  # Convert list of tensors to a single tensor
+        states = torch.cat(states).to(device)  # Convert list of tensors to a single tensor
         actions, old_probs, returns = map(torch.tensor, (actions, old_probs, returns))
 
         for _ in range(self.epochs):
@@ -51,6 +56,8 @@ class PPO:
 
             self.optimizer.zero_grad()
             loss.backward()
+            # Add gradient clipping
+            torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)
             self.optimizer.step()
 
     def compute_returns(self, rewards, dones):
@@ -106,16 +113,27 @@ def agent_vs_agent_train(agents, env, num_episodes=1000):
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
         state = env.reset()
         done = False
-        total_reward = [0, 0]
+        total_rewards = [0, 0]
         while not done:
             for i in range(len(agents)):
-                action, log_prob = agents[i].select_action(state.flatten())
+                agent = agents[i]
+                state = state.view(1, 6 * 7)
+                action_probs = agent.policy(state)
+                action = torch.argmax(action_probs).item()
                 next_state, reward, done, info = env.step(action)
-                total_reward[i] += reward
+                total_rewards[i] += reward
                 state = next_state
-
+                if done:
+                    # Adjust total_rewards if there is a winner
+                    if env.winner == 1:
+                        total_rewards[1] = -total_rewards[0]
+                    elif env.winner == 2:
+                        total_rewards[0] = -total_rewards[1]
+                    else:
+                        total_rewards = [0, 0]
+                    break
         winner = info.get("winner", None)
-        tqdm.write(f"Episode {episode}, Winner: {winner}, Total Reward Player 1: {total_reward[0]:.4f}, Total Reward Player 2: {total_reward[1]:.4f}")
+        tqdm.write(f"Episode {episode}, Winner: {winner}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}")
 
     env.close()
 
@@ -128,7 +146,7 @@ if __name__ == '__main__':
     ppo_agent = PPO(6 * 7, 7)
 
     # PPO Training
-    train_ppo(env, num_episodes=10000, save_path='saved_agents/single_ppo_agent_after_train.pth')
+    train_ppo(env, num_episodes=1000, save_path='saved_agents/single_ppo_agent_after_train.pth')
 
     # Load PPO Agent
     checkpoint = torch.load('saved_agents/single_ppo_agent_after_train.pth')
@@ -151,5 +169,3 @@ if __name__ == '__main__':
         'model_state_dict_player2': ppo_agents[1].policy.state_dict(),
         'optimizer_state_dict_player2': ppo_agents[1].optimizer.state_dict(),
     }, 'saved_agents/ppo_agents_after_train.pth')
-
-

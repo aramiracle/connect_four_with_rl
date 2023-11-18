@@ -7,6 +7,7 @@ import torch
 from hybrid import HybridAgent
 from dqn import DQNAgent
 from ddqnd import DDQNDAgent
+from a3c import A3CAgent
 from environment import ConnectFourEnv
 
 # Base class for Connect Four Game
@@ -122,6 +123,8 @@ class ConnectFour(QMainWindow):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
         elif isinstance(self.agent, DDQNDAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
+        elif isinstance(self.agent, A3CAgent):
+            return self.agent.select_action(self.agent.env.board)
         else:
             self.status_label.setText("No agent is loaded.")
             return None
@@ -150,7 +153,7 @@ class ConnectFour(QMainWindow):
 
     def select_agent(self):
         agent_type, ok = QInputDialog.getItem(self, "Select Agent Type", 
-                                            "Choose an agent:", ["DQN","DDQND", "Hybrid"], 0, False)
+                                            "Choose an agent:", ["DQN","DDQND", "Hybrid", "A3C"], 0, False)
         if ok and agent_type:
             if agent_type == "DQN":
                 if self.current_player == 1:
@@ -173,7 +176,13 @@ class ConnectFour(QMainWindow):
                 else:
                     self.agent = DDQNDAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=1)
-
+            elif agent_type == "A3C":
+                if self.current_player == 1:
+                    self.agent = A3CAgent(ConnectFourEnv(), num_workers=4)
+                    self.load_agent('saved_agents/a3c_agents_after_train.pth', player=2)
+                else:
+                    self.agent = A3CAgent(ConnectFourEnv(), num_workers=4)
+                    self.load_agent('saved_agents/a3c_agents_after_train.pth', player=1)
 
     def load_agent(self, filepath, player):
         try:
@@ -184,33 +193,34 @@ class ConnectFour(QMainWindow):
                 if player == 1:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
                     self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
-                    self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])
                 elif player == 2:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
                     self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
-                    self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
             elif isinstance(self.agent, DDQNDAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
                     self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
-                    self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])
                 elif player == 2:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
                     self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
-                    self.agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
+            elif isinstance(self.agent, A3CAgent):
+                # Load Hybrid agent
+                checkpoint = torch.load(filepath)
+                if player == 1:
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                elif player == 2:
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
             elif isinstance(self.agent, HybridAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
                     self.agent.dqn_agent_player1.model.load_state_dict(checkpoint['model_state_dict_player1'])
                     self.agent.dqn_agent_player1.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
-                    self.agent.dqn_agent_player1.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])
                 elif player == 2:
                     self.agent.dqn_agent_player2.model.load_state_dict(checkpoint['model_state_dict_player2'])
                     self.agent.dqn_agent_player2.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
-                    self.agent.dqn_agent_player2.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
             # Display a success message
             self.status_label.setText(f"{type(self.agent).__name__} loaded successfully for Player {player}.")
             self.play_button.setDisabled(False)

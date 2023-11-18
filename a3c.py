@@ -83,7 +83,7 @@ class A3CAgent:
         state = self.env.reset()
 
         while True:
-            policy_logits, value = self.model(torch.tensor(state, dtype=torch.float32))
+            policy_logits, value = self.model(state)
             action_probs = torch.softmax(policy_logits, dim=0)
             action = torch.multinomial(action_probs, 1).item()
 
@@ -164,7 +164,7 @@ if __name__=='__main__':
     # Example usage:
     env = ConnectFourEnv()
     agent = A3CAgent(env, num_workers=4)
-    agent.train_async(num_episodes=1000)
+    agent.train_async(num_episodes=10000)
 
     env = ConnectFourEnv()
     agent1 = A3CAgent(env, num_workers=4)
@@ -172,7 +172,7 @@ if __name__=='__main__':
     agent1.model = agent.model
     agent2.model = agent.model
     agents = [agent1, agent2]
-    agent_vs_agent_train(agents, env, num_episodes=10000)
+    agent_vs_agent_train(agents, env, num_episodes=100000)
 
     # Save the trained model
     torch.save({
