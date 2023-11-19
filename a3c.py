@@ -30,7 +30,7 @@ class PolicyValueNet(nn.Module):
 
 # A3C agent implementation
 class A3CAgent:
-    def __init__(self, env, num_workers, gamma=0.99, lr=1e-3):
+    def __init__(self, env, num_workers=4, gamma=0.99, lr=1e-3):
         self.env = env
         self.num_workers = num_workers
         self.gamma = gamma
@@ -84,7 +84,7 @@ class A3CAgent:
 
         while True:
             policy_logits, value = self.model(state)
-            action_probs = torch.softmax(policy_logits, dim=0)
+            action_probs = torch.softmax(policy_logits, dim=1)
             action = torch.multinomial(action_probs, 1).item()
 
             next_state, reward, done, _ = self.env.step(action)
@@ -123,27 +123,38 @@ class A3CAgent:
         values = torch.tensor(rollout['values'], dtype=torch.float32)
         return states, actions, rewards, next_states, dones, values
     
-    def select_action(self, state):
+    def select_action(self, state, training=True):
         with torch.no_grad():
-            policy_logits, _ = self.model(torch.tensor(state, dtype=torch.float32))
-            action_probs = torch.softmax(policy_logits, dim=0)
-            action = torch.multinomial(action_probs, 1).item()
-            return action
+            policy_logits, _ = self.model(state)
+            action_probs = torch.softmax(policy_logits, dim=1)
 
+            valid_actions = self.env.get_valid_actions()
+
+            if training:
+                # During training, sample an action using multinomial from the valid actions
+                valid_action_probs = action_probs[0, valid_actions]
+                action_index = torch.multinomial(valid_action_probs, 1).item()
+                action = valid_actions[action_index]
+            else:
+                # During testing, choose the action with the highest probability from the valid actions
+                best_valid_action = torch.argmax(action_probs[0, valid_actions]).item()
+                action = valid_actions[best_valid_action]
+
+            return action
+            
 def agent_vs_agent_train(agents, env, num_episodes=1000):
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
-        states = [env.reset(), env.reset()]
+        state = env.reset()
         total_rewards = [0, 0]
         done = False
 
         while not done:
             for i in range(len(agents)):
                 agent = agents[i]
-                state = states[i]
                 action = agent.select_action(state)
                 next_state, reward, done, info = env.step(action)
                 total_rewards[i] += reward
-                states[i] = next_state
+                state = next_state
                 if done:
                     if env.winner == 1:
                         total_rewards[1] = -total_rewards[0]
@@ -164,7 +175,7 @@ if __name__=='__main__':
     # Example usage:
     env = ConnectFourEnv()
     agent = A3CAgent(env, num_workers=4)
-    agent.train_async(num_episodes=10000)
+    agent.train_async(num_episodes=1000)
 
     env = ConnectFourEnv()
     agent1 = A3CAgent(env, num_workers=4)
@@ -172,7 +183,7 @@ if __name__=='__main__':
     agent1.model = agent.model
     agent2.model = agent.model
     agents = [agent1, agent2]
-    agent_vs_agent_train(agents, env, num_episodes=100000)
+    agent_vs_agent_train(agents, env, num_episodes=10000)
 
     # Save the trained model
     torch.save({

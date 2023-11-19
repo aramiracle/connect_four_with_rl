@@ -22,7 +22,7 @@ class PolicyNetwork(nn.Module):
         x = self.fc2(x)
         return F.softmax(x, dim=1)
 
-class PPO:
+class PPOAgent:
     def __init__(self, state_dim, action_dim, hidden_size=32, learning_rate=0.0001, gamma=0.99, clip_param=0.1, epochs=10):
         self.policy = PolicyNetwork(state_dim, hidden_size, action_dim).to(device)
         self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate)
@@ -73,7 +73,7 @@ class PPO:
 def train_ppo(env, num_episodes=1000, save_path="saved_agents/ppo_agent_after_train.pth"):
     action_dim = env.action_space.n
     flattened_state_size = env.observation_space.shape[0] * env.observation_space.shape[1]
-    ppo = PPO(flattened_state_size, action_dim)
+    ppo = PPOAgent(flattened_state_size, action_dim)
 
     for episode in tqdm(range(num_episodes)):
         state = env.reset().view(1, 6 * 7)
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
 
     # Player
-    ppo_agent = PPO(6 * 7, 7)
+    ppo_agent = PPOAgent(6 * 7, 7)
 
     # PPO Training
     train_ppo(env, num_episodes=1000, save_path='saved_agents/single_ppo_agent_after_train.pth')
@@ -154,7 +154,7 @@ if __name__ == '__main__':
     ppo_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     # Create two PPO agents from the saved one
-    ppo_agents = [PPO(6 * 7, 7), PPO(6 * 7, 7)]
+    ppo_agents = [PPOAgent(6 * 7, 7), PPOAgent(6 * 7, 7)]
     ppo_agents[0].policy.load_state_dict(ppo_agent.policy.state_dict())
     ppo_agents[1].policy.load_state_dict(ppo_agent.policy.state_dict())
     ppo_agents[0].optimizer.load_state_dict(ppo_agent.optimizer.state_dict())

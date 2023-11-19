@@ -60,10 +60,36 @@ class ConnectFour(QMainWindow):
         button_row_layout.addWidget(self.play_button)
         self.play_button.setDisabled(True)
         self.grid.addLayout(button_row_layout, 7, 0, 1, 7)
+        self.play_again_button = QPushButton("Play Again")
+        self.play_again_button.clicked.connect(self.play_again)
+        self.play_again_button.setDisabled(True)
+        button_row_layout.addWidget(self.play_again_button)
+
+    def play_again(self):
+        self.game_over = False
+        self.status_label.setText("")
+        self.game_state_history = []
+        
+        # Reset the board
+        for row in range(6):
+            for col in range(7):
+                self.board[row][col].setStyleSheet("")
+                self.board[row][col].setEnabled(False)  # Disable buttons initially
+
+        # Reset the environment
+        self.agent.env.reset()
+
+        # Enable the board buttons at the start of the game
+        self.enable_board_buttons()
+
+        # Reset the current player based on the radio button selection
+        self.current_player = 1 if self.player1_button.isChecked() else 2
+
+        if self.current_player == 2 and self.agent:
+            self.play_ai_turn()
 
     def select_player(self):
         self.current_player = 1 if self.player1_button.isChecked() else 2
-        self.play_button.setDisabled(False)
 
     def enable_board_buttons(self):
         for row in range(6):
@@ -248,6 +274,7 @@ class ConnectFour(QMainWindow):
             # Display a success message
             self.status_label.setText(f"{type(self.agent).__name__} loaded successfully for Player {player}.")
             self.play_button.setDisabled(False)
+            self.play_again_button.setDisabled(False)
         except FileNotFoundError:
             # Display an error message if the file is not found
             self.status_label.setText("Agent file not found.")
