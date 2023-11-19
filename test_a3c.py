@@ -19,16 +19,12 @@ def simulate_game(env, player1, player2):
     while not done:
         if env.current_player == 1:
             if isinstance(player1, A3CAgent):  # Check if player1 is an instance of A3CAgent
-                policy_logits, _ = player1.model(state)
-                valid_actions = env.get_valid_actions()
-                action = max(valid_actions, key=lambda a: policy_logits.squeeze()[a])
+                action = player1.select_action(state, training=False)
             elif isinstance(player1, RandomBot):  # Check if player1 is an instance of RandomBot
                 action = player1.select_action(state)
         else:
             if isinstance(player2, A3CAgent):  # Check if player1 is an instance of A3CAgent
-                policy_logits, _ = player2.model(state)
-                valid_actions = env.get_valid_actions()
-                action = max(valid_actions, key=lambda a: policy_logits.squeeze()[a])
+                action = player2.select_action(state, training=False)
             elif isinstance(player2, RandomBot):  # Check if player1 is an instance of RandomBot
                 action = player2.select_action(state) 
         state, _, done, _ = env.step(action)

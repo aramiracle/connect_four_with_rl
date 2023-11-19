@@ -8,9 +8,9 @@ class RandomBot:
     def __init__(self, env):
         self.env = env
 
-    def select_action(self, state):
+    def select_most_probable_action(self, state):
         available_actions = [col for col in range(self.env.action_space.n) if self.env.board[0][col] == 0]
-        return [random.choice(available_actions) if available_actions else None]
+        return random.choice(available_actions) if available_actions else None
 
 def simulate_game(env, player1, player2):
     """Simulates a single game between two AI agents."""
@@ -18,10 +18,10 @@ def simulate_game(env, player1, player2):
     done = False
     while not done:
         if env.current_player == 1:
-            action = player1.select_action(state.flatten())
+            action = player1.select_most_probable_action(state.flatten())
         else:
-            action = player2.select_action(state.flatten())
-        state, _, done, _ = env.step(action[0])
+            action = player2.select_most_probable_action(state.flatten())
+        state, _, done, _ = env.step(action)
     return env.winner
 
 def test_ai_vs_random(env, ai_agent, num_games=1000):
