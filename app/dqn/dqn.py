@@ -5,7 +5,7 @@ import torch.optim as optim
 from collections import namedtuple, deque
 from tqdm import tqdm
 import random
-from environment import ConnectFourEnv
+from app.environment import ConnectFourEnv
 
 # Define the DQN model using PyTorch
 class DQN(nn.Module):

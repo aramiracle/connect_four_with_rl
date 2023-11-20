@@ -1,8 +1,8 @@
 import torch
 import random
 from tqdm import tqdm
-from dqn import DQNAgent
-from environment import ConnectFourEnv
+from app.dqn.dqn import DQNAgent
+from app.environment import ConnectFourEnv
 
 class RandomBot:
     def __init__(self, env):
