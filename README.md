@@ -1,88 +1,262 @@
-# Connect Four AI with DQN
+# Connect Four AI with Deep Reinforcemnet Learning
 
-This project implements a playable Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained via a Deep Q-Network (DQN). The AI learns optimal gameplay by training against itself and saves its learned strategy to compete with human players.
+This project implements a playable Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained via a Deep Reinforcement Learning models include DQN, DDQND, PPO and A3C . The AI learns optimal gameplay by training against itself and saves its learned strategy to compete with human players.
 
 ## Scripts Overview
 
-### `main.py`
+### `gui.py` Connect Four Game GUI Summary
 
-This script is the entry point of the Connect Four game. It creates a window application using the PyQt6 framework and manages the game's state and player interactions. The game board is represented as a grid of buttons. When a button is clicked, the game logic determines if the current player or AI has won, or if the game is a draw. The script also allows for the loading of a pre-trained DQN model to play against the AI.
+This script utilizes PyQt6 to create a simple GUI for the Connect Four game. Key components include:
 
-Key Features:
-- **Window and Board Initialization**: Initializes the game window and board layout.
-- **Move Handling**: Handles player and AI moves.
-- **State and UI Update**: Updates the game state and UI after each move.
-- **DQN Model Loading**: Loads a trained DQN agent to play against.
-- **Game Termination Check**: Checks for game termination conditions (win, loss, draw).
+#### ConnectFour Class (QMainWindow):
+- Inherits from QMainWindow to create the main window for the game.
+- Initializes UI elements, including the game board grid, buttons, and status label.
 
-### `environment.py`
+#### UI Initialization:
+- Uses QGridLayout to organize the game board and buttons.
+- Initializes a 2D array (`board`) to represent the game board with buttons.
+- Sets up click events for each button to trigger the `on_click` method.
 
-This script defines the `ConnectFourEnv` class that simulates the Connect Four game environment. It inherits from the `gym.Env` class, making it compatible with the OpenAI Gym interface. The environment tracks the state of the game board and provides a `step` function to make moves, a `reset` function to start a new game, and a `render` function to display the game state in the console.
+#### Button Click Handling (`on_click` method):
+- Updates the game board when a button is clicked.
+- Checks for a win or draw condition after each move.
+- Switches between players after each valid move.
 
-Key Features:
-- **Connect Four Logic Implementation**: Implements the Connect Four rules and game logic.
-- **Game Board Management**: Manages the game board state as a 2D tensor.
-- **Agent Interaction Interface**: Provides an interface for agents to interact with the environment.
-- **Legal Move Determination**: Determines the legal moves and updates the board accordingly.
-- **Winning and Draw Check**: Checks for a winning condition or a draw.
+#### Win Condition Check (`check_win` method):
+- Checks for a win condition in all directions (horizontal, vertical, and diagonal).
 
-### `dqn.py`
+#### Counting Consecutive Pieces (`count_aligned` method):
+- Counts consecutive pieces in a given direction to determine a win.
 
-This script contains the neural network architecture for the DQN (`DQN` class), the experience replay mechanism (`ExperienceReplayBuffer` class), and the DQN agent (`DQNAgent` class). It details the model's layers and forward pass, the methodology for storing and sampling experiences, and the agent's policy for selecting actions and learning from experiences.
+#### Counting in a Single Direction (`count_direction` method):
+- Counts pieces in a single direction for checking win conditions.
 
-Key Features:
-- **DQN Model Architecture**: Defines the DQN model architecture using PyTorch.
-- **Experience Replay Management**: Manages the experience replay buffer for efficient learning.
-- **Agent Learning Loop**: Implements the agent's learning loop, including action selection and model updates.
-- **Training Process Conduct**: Conducts the training process over a series of episodes.
-- **Model Saving**: Saves the trained model's parameters for later use.
+#### Draw Condition Check (`check_draw` method):
+- Checks for a draw condition when the top row of each column is filled.
 
-### `test.py`
+#### Example Usage:
+- Initializes the PyQt application, creates the ConnectFour window, and starts the application loop.
 
-The `test.py` script is designed to evaluate the performance of the trained DQN agent. It tests the agent against a random opponent over a number of games, alternating between starting first and second. After the simulation, it reports the number of wins, losses, and draws to assess the AI's skill level.
+This script provides a graphical interface for playing Connect Four, with player turns, win detection, and draw conditions.
 
-Key Features:
-- **AI Performance Simulation**: Simulates games between the trained DQN agent and a random bot.
-- **Statistical Performance Evaluation**: Evaluates the AI's performance statistically over multiple games.
-- **Winning Ability Insight**: Provides insights into the AI's ability to win as both the first and second player.
-- **Strategy Improvement Assistance**: Helps to debug and improve the agent's strategy after training.
+### `main.py` Summary
 
-### `upgraded_dqn.py`
+The script, serving as the Connect Four game's entry point, leverages PyQt6 for window creation and game management. Key highlights include:
 
-This script provides an improved version of the DQN model for the Connect Four game. Key enhancements include:
+- **Window and Board Setup:**
+  - Initializes a 600x600 window with a 6x7 grid layout for the game board.
 
-- **Convolutional Network Architecture**: Uses convolutional layers to process the game state, capturing spatial hierarchies.
-- **Dueling Network Architecture**: Implements a dueling architecture that separates the estimation of the value and advantage streams.
-- **Priority Experience Replay Enhancement**: Enhances the replay mechanism to prioritize important experiences, accelerating learning.
-- **Epsilon-Greedy Action Selection**: Employs an epsilon-greedy approach for action selection, balancing exploration and exploitation.
-- **Comprehensive Training Loop**: Includes a comprehensive training loop with target network updates for stability.
+- **Move Handling:**
+  - Manages both player and AI moves, updating the game state and UI correspondingly.
 
-### `mct.py`
+- **Model Loading:**
+  - Allows users to choose from various agents (DQN, DDQND, Hybrid, PPO, A3C) via a dialog.
+  - Loads pre-trained agents based on the selected type and player, ensuring seamless integration.
 
-This script introduces a Monte Carlo Tree Search (MCTS) agent for strategic gameplay:
+- **Game Dynamics:**
+  - Dynamically updates the game state and UI after each move, visually representing player and AI actions.
 
-- **Monte Carlo Tree Search Algorithm**: Implements MCTS, a search algorithm for making decisions in a game tree without requiring high computational costs.
-- **Node Expansion Strategy**: Expands the search tree based on random simulations and updates nodes with the outcomes.
-- **Exploration vs. Exploitation Balance**: Uses the Upper Confidence Bound (UCB1) formula to balance between exploring new moves and exploiting known good ones.
-- **Value Backpropagation**: After each simulation, updates the node values and visit counts up the tree.
+- **Termination Conditions:**
+  - Checks for win, loss, or draw conditions, providing relevant messages upon game conclusion.
 
-### `gui.py`
+- **Player Control:**
+  - Enables users to start as Player 1 or Player 2, offering intuitive game control buttons.
 
-This script uses the PyQt6 framework to create a GUI for the Connect Four game:
+- **Agent Interaction:**
+  - Facilitates the selection of an agent to play against, enhancing user experience.
 
-- **PyQt6 User Interface Creation**: Leverages PyQt6 to create a responsive and visually appealing user interface.
-- **Interactive Game Board**: Presents a 6x7 grid of buttons that players can click to make a move.
-- **Game Logic Handling**: Includes methods to handle the game logic, such as player moves, win checks, and draw conditions.
-- **Game State Status Updates**: Provides a status label on the GUI to inform players about the current game state or endgame results.
+- **Exception Handling:**
+  - Implements robust error handling, displaying meaningful messages in case of agent loading issues.
 
-Each script collaborates to create a complete Connect Four experience with a challenging AI opponent. Users can interact with the game, train the AI, and evaluate its gameplay, all through these Python scripts.
+- **Entry Point:**
+  - Initiates the PyQt6 application, seamlessly combining game logic, UI, and agent integration for a cohesive Connect Four gaming experience.
+
+### `environment.py` Summary
+
+The `ConnectFourEnv` class defines a custom environment for the Connect Four game, adhering to the gym interface. Key functionalities include:
+
+- **Initialization:**
+  - Creates a 6x7 Connect Four board, initializes the current player, and sets maximum moves to 42.
+
+- **Reset:**
+  - Resets the board, randomly selects the starting player, and returns the initial observation.
+
+- **Step:**
+  - Places a player's piece in the selected column, checks for a win or draw, and assigns rewards accordingly.
+
+- **Rendering:**
+  - Displays the current state of the board to the console.
+
+- **Game State Check:**
+  - Determines if the game is in a terminal state (win, draw, or ongoing).
+
+- **Winning Check:**
+  - Checks for a win condition in all directions from the last move.
+
+- **Result Determination:**
+  - Determines the result of the game (win, loss, draw) if it's in a terminal state.
+
+- **Valid Actions:**
+  - Retrieves a list of valid columns where a piece can be placed.
+
+- **Last Move:**
+  - Retrieves the row and column of the last move.
+
+- **Clone:**
+  - Creates a clone of the environment.
+
+This class encapsulates the game's logic, providing methods for interacting with the environment, checking game status, and making moves.
+
+### `dqn.py` DQN Agent Training Script Summary
+
+This script defines a Deep Q-Network (DQN) agent for training in a Connect Four environment. Key components include:
+
+#### DQN Model:
+- A PyTorch neural network (`DQN`) representing the Q-function, with one-hot encoding for board states.
+
+#### Experience Replay Buffer:
+- `ExperienceReplayBuffer` class managing a buffer of experiences for training stability.
+
+#### DQNAgent Class:
+- Agent using DQN to learn optimal actions in the Connect Four environment.
+- Implements epsilon-greedy exploration for action selection.
+- Utilizes experience replay and target network to improve training stability.
+- Performs a training step using the Mean Squared Error loss.
+
+#### Agent vs Agent Training:
+- `agent_vs_agent_train` function for training two DQN agents against each other.
+- Training loop with epsilon decay and batch processing of experiences.
+- Outputs episode statistics and winner information.
+
+#### Example Usage:
+- Creates a Connect Four environment and two DQN agents.
+- Trains the agents in an adversarial setting.
+- Saves the trained agents' states for future use.
+
+This script provides a comprehensive setup for training DQN agents to play Connect Four against each other, facilitating reinforcement learning in a competitive environment.
+
+### `ddqn.py` Dueling DQN Agent Training Script Summary
+
+This script extends the DQN-based Connect Four agent to use a Dueling DQN architecture. Key components include:
+
+#### DuelingDQN Model:
+- A PyTorch neural network (`DuelingDQN`) implementing the Dueling DQN architecture, separating value and advantage streams.
+
+#### Experience Replay Buffer:
+- Same as in the DQN script, an `ExperienceReplayBuffer` class manages a buffer of experiences.
+
+#### DDQNDAgent Class:
+- Similar to the DQN agent but using the DuelingDQN model for Q-value estimation.
+- Implements Double Q-learning by using the target model for action selection during training.
+
+#### Agent vs Agent Training:
+- `agent_vs_agent_train` function facilitates training Dueling DQN agents against each other.
+- Training loop, epsilon-greedy exploration, and batch processing of experiences are similar to the DQN agent.
+
+#### Example Usage:
+- Creates a Connect Four environment and two Dueling DQN agents.
+- Trains the agents in an adversarial setting.
+- Saves the trained agents' states for future use.
+
+This script introduces the Dueling DQN architecture to improve Q-value estimation in a competitive Connect Four environment.
+
+### Asynchronous Advantage Actor-Critic (A3C) Agent Training Script Summary
+
+This script implements the Asynchronous Advantage Actor-Critic (A3C) algorithm for training Connect Four agents. Key components include:
+
+#### PolicyValueNet Model:
+- A PyTorch neural network (`PolicyValueNet`) for estimating both policy and value.
+
+#### `a3c.py` A3CAgent Class:
+- Implements the A3C agent with methods for training and action selection.
+- Uses an asynchronous training approach with multiple workers.
+
+#### Training:
+- `train` method trains the agent using the A3C algorithm, updating the policy and value networks asynchronously.
+- The script includes a `train_async` function for asynchronous training over multiple episodes.
+
+#### Episode Run:
+- `run_episode` method runs an episode, collecting states, actions, rewards, next states, dones, and values.
+- The `compute_returns` method calculates discounted returns for training.
+
+#### Selecting Actions:
+- `select_action` method selects actions during both training and testing.
+
+#### Agent vs Agent Training:
+- `agent_vs_agent_train` function facilitates training A3C agents against each other.
+- Training loop, action selection, and episode completion are handled.
+
+#### Example Usage:
+- Creates an A3C agent and trains it asynchronously.
+- Creates two A3C agents and trains them against each other.
+- Saves the trained models for future use.
+
+This script applies the A3C algorithm for training Connect Four agents in an asynchronous manner, enhancing exploration and convergence.
+
+### `ppo.py` Proximal Policy Optimization (PPO) Agent Training Script Summary
+
+This script implements the Proximal Policy Optimization (PPO) algorithm for training Connect Four agents. Key components include:
+
+#### PPO Model:
+- A PyTorch neural network (`PPO`) for estimating policy and value.
+
+#### PPOAgent Class:
+- Implements the PPO agent with methods for action selection, training steps, and buffer management.
+
+#### Training Step:
+- The `train_step` method performs PPO training using multiple optimization epochs, calculating actor and critic losses, and applying gradient updates.
+
+#### Buffer Management:
+- The `add_to_buffer` method adds experiences to the buffer, and `reset_buffer` clears the buffer after each episode.
+
+#### Selecting Actions:
+- The `select_action` method selects actions during both training and testing, using multinomial sampling during training.
+
+#### Episode Run and Training Loop:
+- `agent_vs_agent_train_ppo` function facilitates training PPO agents against each other.
+- Training loop, action selection, and episode completion are handled.
+
+### Connect Four AI Testing Script Summary
+
+In each model provided a script which tests the performance of Connect Four AI agents in various scenarios:
+
+#### RandomBot Class:
+- Represents a simple bot that selects random valid actions in the Connect Four environment.
+
+#### Simulate Game Function (`simulate_game`):
+- Simulates a single game between two AI agents and returns the winner.
+
+#### AI vs. Random Bot Testing Function (`test_ai_vs_random`):
+- Tests an AI agent against a random bot over a specified number of games.
+- Tracks wins for the AI and the random bot, as well as draws.
+
+#### Random Bot vs. AI Testing Function (`test_random_bot_vs_ai`):
+- Tests a random bot against an AI agent over a specified number of games.
+- Tracks wins for the random bot and the AI, as well as draws.
+
+#### AI vs. AI Testing Function (`test_ai_vs_ai`):
+- Tests two AI agents against each other over a specified number of games.
+- Tracks wins for both AI agents and draws.
+
+#### Example Usage:
+- Initializes a Connect Four environment and loads pre-trained AI agents (DQNAgent and etc).
+- Performs testing scenarios for AI vs. Random Bot, Random Bot vs. AI, and AI vs. AI.
+- Prints the results of each testing scenario.
+
+This script provides a comprehensive evaluation of the AI agents' performance in different scenarios, contributing to the assessment of their effectiveness in playing Connect Four.
+
+#### Example Usage:
+- Creates two PPO agents and trains them against each other.
+- Saves the trained models for future use.
+
+This script applies the PPO algorithm for training Connect Four agents, emphasizing stability and sample efficiency.
 
 ## Installation
 
 Ensure you have Python 3.6 or higher and pip installed on your system. To install the required libraries for the Connect Four AI, execute the following command in your terminal:
 
 ```
-pip install PyQt6 torch gymnasium numpy tqdm
+pip install reqirement.txt
 ```
 This command will install PyQt6 for the GUI, PyTorch for deep learning algorithms, Gym for the game environment, NumPy for numerical computations, and tqdm for progress bars during training and testing.
 
@@ -92,14 +266,10 @@ This command will install PyQt6 for the GUI, PyTorch for deep learning algorithm
 
 To train the AI model, run one of the following scripts depending on the version of DQN you want to use:
 
-For the standard DQN:
+For the standard DQN as an example:
 
 ```
 python dqn.py
-```
-or for using enhanced model:
-```
-python upgraded_dqn.py
 ```
 
 ### Playing Game with AI
@@ -108,11 +278,12 @@ After training, you can start a game against the AI by executing:
 ```
 python main.py
 ```
+Also trained models are saved in saved_model directory.
 
 ### Testing the AI
 
-To evaluate the AI's performance against a random bot, use:
+To evaluate the AI's performance against a random bot, example of use:
 ```
-python test.py
+python test_dqn.py
 ```
 This script will simulate games and provide statistics on the AI's performance.

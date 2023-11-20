@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from environment import ConnectFourEnv
+from app.environment import ConnectFourEnv
 from collections import namedtuple
 from tqdm import tqdm
-import random
 
 # Define the PPO model using PyTorch
 class PPO(nn.Module):

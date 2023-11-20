@@ -1,8 +1,8 @@
 import torch
 import random
 from tqdm import tqdm
-from ppo import PPOAgent
-from environment import ConnectFourEnv
+from app.ppo.ppo import PPOAgent
+from app.environment import ConnectFourEnv
 
 class RandomBot:
     def __init__(self, env):

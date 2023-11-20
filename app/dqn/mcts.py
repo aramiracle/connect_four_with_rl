@@ -1,5 +1,5 @@
 import numpy as np
-from environment import ConnectFourEnv  # Make sure to replace 'environment' with the actual module name
+from app.environment import ConnectFourEnv  # Make sure to replace 'environment' with the actual module name
 
 class Node:
     def __init__(self, state, parent=None):

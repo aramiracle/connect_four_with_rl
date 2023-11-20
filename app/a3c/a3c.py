@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
-from environment import ConnectFourEnv
+from app.environment import ConnectFourEnv
 from tqdm import tqdm
 
 # Define a simple neural network for policy and value estimation

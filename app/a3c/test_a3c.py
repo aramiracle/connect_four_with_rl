@@ -1,8 +1,8 @@
 import torch
 import random
 from tqdm import tqdm
-from a3c import A3CAgent, PolicyValueNet
-from environment import ConnectFourEnv
+from app.a3c.a3c import A3CAgent, PolicyValueNet
+from app.environment import ConnectFourEnv
 
 class RandomBot:
     def __init__(self, env):
