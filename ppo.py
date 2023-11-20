@@ -2,170 +2,164 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torch.distributions import Categorical
 from environment import ConnectFourEnv
+from collections import namedtuple
 from tqdm import tqdm
+import random
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-class PolicyNetwork(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super(PolicyNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size * 3, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, output_size)
+# Define the PPO model using PyTorch
+class PPO(nn.Module):
+    def __init__(self):
+        super(PPO, self).__init__()
+        self.fc1 = nn.Linear(6 * 7 * 3, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 64)
+        self.policy_head = nn.Linear(64, 7)
+        self.value_head = nn.Linear(64, 1)
 
     def forward(self, x):
         x = x.long()
         x = F.one_hot(x.to(torch.int64), num_classes=3).float()
-        x = x.view(-1, 6 * 7 * 3)        
+        x = x.view(-1, 6 * 7 * 3)
         x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        return F.softmax(x, dim=1)
+        x = F.relu(self.fc2(x))
+        x = F.relu(self.fc3(x))
+        logits = self.policy_head(x)
+        value = self.value_head(x)
+        return logits, value
 
+
+# PPO agent
 class PPOAgent:
-    def __init__(self, state_dim, action_dim, hidden_size=32, learning_rate=0.0001, gamma=0.99, clip_param=0.1, epochs=10):
-        self.policy = PolicyNetwork(state_dim, hidden_size, action_dim).to(device)
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=learning_rate)
-        self.gamma = gamma
+    def __init__(self, env, buffer_capacity=1000000, batch_size=64, clip_param=0.2, entropy_coeff=0.01, gamma=0.99):
+        self.env = env
+        self.model = PPO()
+        self.optimizer = optim.Adam(self.model.parameters())
+        self.batch_size = batch_size
         self.clip_param = clip_param
-        self.epochs = epochs
+        self.entropy_coeff = entropy_coeff
+        self.gamma = gamma
+        self.buffer = []
+        self.buffer_capacity = buffer_capacity
 
-    def select_action(self, state):
-        state = state.flatten().float().unsqueeze(0).to(device)
-        probs = self.policy(state)
-        m = Categorical(probs)
-        action = m.sample()
-        return action.item(), m.log_prob(action)
+    def add_to_buffer(self, experience):
+        self.buffer.append(experience)
+        if len(self.buffer) > self.buffer_capacity:
+            self.buffer = self.buffer[-self.buffer_capacity:]
 
-    def update(self, states, actions, old_probs, rewards, dones):
+    def select_action(self, state, training=True):
+        with torch.no_grad():
+            policy_logits, _ = self.model(state)
+            action_probs = torch.softmax(policy_logits, dim=1)
+
+            valid_actions = self.env.get_valid_actions()
+
+            if training:
+                # During training, sample an action using multinomial from the valid actions
+                valid_action_probs = action_probs[0, valid_actions]
+                action_index = torch.multinomial(valid_action_probs + 1e-9, 1).item()
+                action = valid_actions[action_index]
+            else:
+                # During testing, choose the action with the highest probability from the valid actions
+                best_valid_action = torch.argmax(action_probs[0, valid_actions]).item()
+                action = valid_actions[best_valid_action]
+
+        return action
+
+
+    def train_step(self):
+        states, actions, old_probs, values, rewards, dones = zip(*self.buffer)
+        states = torch.stack(states)
+        actions = torch.tensor(actions, dtype=torch.int64)
+        old_probs = torch.tensor(old_probs, dtype=torch.float32)
+        values = torch.tensor(values, dtype=torch.float32)
+        rewards = torch.tensor(rewards, dtype=torch.float32)
+        dones = torch.tensor(dones, dtype=torch.float32)
+
         returns = self.compute_returns(rewards, dones)
-        states = torch.cat(states).to(device)  # Convert list of tensors to a single tensor
-        actions, old_probs, returns = map(torch.tensor, (actions, old_probs, returns))
 
-        for _ in range(self.epochs):
-            advantages = returns - self.policy(states).gather(1, actions.unsqueeze(1))
+        for _ in range(3):  # Number of optimization epochs
+            for i in range(0, len(self.buffer), self.batch_size):
+                batch_states = states[i:i + self.batch_size]
+                batch_actions = actions[i:i + self.batch_size]
+                batch_old_probs = old_probs[i:i + self.batch_size]
+                batch_values = values[i:i + self.batch_size]
+                batch_returns = returns[i:i + self.batch_size]
 
-            new_probs = self.policy(states)
-            ratio = (new_probs.gather(1, actions.unsqueeze(1)) / old_probs).squeeze()
-            surr1 = ratio * advantages
-            surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * advantages
-            loss = -torch.min(surr1, surr2).mean()
+                logits, new_values = self.model(batch_states)
+                new_probs = F.softmax(logits, dim=-1)
+                new_action_probs = new_probs.gather(1, batch_actions.unsqueeze(-1))
 
-            entropy = -(new_probs * torch.log(new_probs + 1e-10)).sum(dim=1).mean()
-            loss -= 0.01 * entropy
+                ratio = new_action_probs / batch_old_probs
+                surr1 = ratio * (batch_returns - batch_values)
+                surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * (batch_returns - batch_values)
+                actor_loss = -torch.min(surr1, surr2).mean()
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            # Add gradient clipping
-            torch.nn.utils.clip_grad_norm_(self.policy.parameters(), max_norm=0.5)
-            self.optimizer.step()
+                value_loss = F.mse_loss(new_values.squeeze(), batch_returns)
+
+                entropy = -(new_probs * torch.log(new_probs + 1e-8)).sum(dim=-1).mean()
+
+                loss = actor_loss + 0.5 * value_loss - self.entropy_coeff * entropy
+
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
     def compute_returns(self, rewards, dones):
         returns = []
-        R = 0
-        for r, done in zip(reversed(rewards), reversed(dones)):
-            R = r + self.gamma * R if not done else 0
-            returns.insert(0, R)
-        returns = torch.tensor(returns)
-        returns = (returns - returns.mean()) / (returns.std() + 1e-8)
-        return returns.numpy()
+        discounted_return = 0
+        for i in range(len(rewards) - 1, -1, -1):
+            discounted_return = rewards[i] + self.gamma * discounted_return * (1 - dones[i])
+            returns.insert(0, discounted_return)
+        returns = torch.tensor(returns, dtype=torch.float32)
+        return returns
 
-def train_ppo(env, num_episodes=1000, save_path="saved_agents/ppo_agent_after_train.pth"):
-    action_dim = env.action_space.n
-    flattened_state_size = env.observation_space.shape[0] * env.observation_space.shape[1]
-    ppo = PPOAgent(flattened_state_size, action_dim)
-
-    for episode in tqdm(range(num_episodes)):
-        state = env.reset().view(1, 6 * 7)
-        done = False
-        total_rewards = 0
-        states, actions, rewards, dones, old_probs = [], [], [], [], []
-
-        while not done:
-            action, log_prob = ppo.select_action(state)
-            states.append(state)
-            actions.append(action)
-            old_probs.append(log_prob.item())
-
-            state, reward, done, _ = env.step(action)
-            state = state.view(1, 6 * 7)
-            rewards.append(reward)
-            dones.append(done)
-
-            total_rewards += reward
-
-        ppo.update(states, actions, old_probs, rewards, dones)
-
-        if episode % 10 == 0:
-            tqdm.write(f"Episode {episode}, Total Reward {total_rewards:.4f}")
-
-        if episode % 100 == 0:
-            save_model(ppo, save_path)
-
-def save_model(model, save_path):
-    torch.save({
-        'model_state_dict': model.policy.state_dict(),
-        'optimizer_state_dict': model.optimizer.state_dict(),
-    }, save_path)
+    def reset_buffer(self):
+        self.buffer = []
 
 
-def agent_vs_agent_train(agents, env, num_episodes=1000):
-    for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
+# Agent vs Agent Training using PPO
+def agent_vs_agent_train_ppo(agents, env, num_episodes=1000):
+    for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training (PPO)", unit="episode"):
         state = env.reset()
-        done = False
         total_rewards = [0, 0]
+        done = False
+
         while not done:
             for i in range(len(agents)):
-                agent = agents[i]
-                state = state.view(1, 6 * 7)
-                action_probs = agent.policy(state)
-                action = torch.argmax(action_probs).item()
+                action = agents[i].select_action(state)
                 next_state, reward, done, info = env.step(action)
                 total_rewards[i] += reward
+                old_probs, _ = agents[i].model(state.unsqueeze(0))
+                agents[i].add_to_buffer((state, action, old_probs[0, action].item(), _, reward, done))
                 state = next_state
                 if done:
-                    # Adjust total_rewards if there is a winner
                     if env.winner == 1:
                         total_rewards[1] = -total_rewards[0]
                     elif env.winner == 2:
                         total_rewards[0] = -total_rewards[1]
-                    else:
-                        total_rewards = [0, 0]
                     break
-        winner = info.get("winner", None)
-        tqdm.write(f"Episode {episode}, Winner: {winner}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}")
 
-    env.close()
+        # Batch processing of experiences for each agent
+        for agent in agents:
+            agent.train_step()
+            agent.reset_buffer()
 
+        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}")
 
-# Example usage:
 if __name__ == '__main__':
     env = ConnectFourEnv()
 
-    # Player
-    ppo_agent = PPOAgent(6 * 7, 7)
+    # Players
+    ppo_agents = [PPOAgent(env), PPOAgent(env)]
 
-    # PPO Training
-    train_ppo(env, num_episodes=1000, save_path='saved_agents/single_ppo_agent_after_train.pth')
+    # Agent vs Agent Training (PPO)
+    agent_vs_agent_train_ppo(ppo_agents, env, num_episodes=100000)
 
-    # Load PPO Agent
-    checkpoint = torch.load('saved_agents/single_ppo_agent_after_train.pth')
-    ppo_agent.policy.load_state_dict(checkpoint['model_state_dict'])
-    ppo_agent.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-    # Create two PPO agents from the saved one
-    ppo_agents = [PPOAgent(6 * 7, 7), PPOAgent(6 * 7, 7)]
-    ppo_agents[0].policy.load_state_dict(ppo_agent.policy.state_dict())
-    ppo_agents[1].policy.load_state_dict(ppo_agent.policy.state_dict())
-    ppo_agents[0].optimizer.load_state_dict(ppo_agent.optimizer.state_dict())
-    ppo_agents[1].optimizer.load_state_dict(ppo_agent.optimizer.state_dict())
-
-    # Agent vs Agent Training
-    agent_vs_agent_train(ppo_agents, env, num_episodes=10000)
-
+    # Save the trained agents
     torch.save({
-        'model_state_dict_player1': ppo_agents[0].policy.state_dict(),
+        'model_state_dict_player1': ppo_agents[0].model.state_dict(),
         'optimizer_state_dict_player1': ppo_agents[0].optimizer.state_dict(),
-        'model_state_dict_player2': ppo_agents[1].policy.state_dict(),
+        'model_state_dict_player2': ppo_agents[1].model.state_dict(),
         'optimizer_state_dict_player2': ppo_agents[1].optimizer.state_dict(),
     }, 'saved_agents/ppo_agents_after_train.pth')

@@ -1,15 +1,15 @@
 import torch
 import random
 from tqdm import tqdm
-from ppo import PPO
+from ppo import PPOAgent
 from environment import ConnectFourEnv
 
 class RandomBot:
     def __init__(self, env):
         self.env = env
 
-    def select_most_probable_action(self, state):
-        available_actions = [col for col in range(self.env.action_space.n) if self.env.board[0][col] == 0]
+    def select_action(self, state, training):
+        available_actions = [col for col in range(self.env.action_space.n) if state[0][col] == 0]
         return random.choice(available_actions) if available_actions else None
 
 def simulate_game(env, player1, player2):
@@ -18,9 +18,9 @@ def simulate_game(env, player1, player2):
     done = False
     while not done:
         if env.current_player == 1:
-            action = player1.select_most_probable_action(state.flatten())
+            action = player1.select_action(state, training= False)
         else:
-            action = player2.select_most_probable_action(state.flatten())
+            action = player2.select_action(state, training=False)
         state, _, done, _ = env.step(action)
     return env.winner
 
@@ -83,18 +83,14 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
 if __name__ == '__main__':
     env = ConnectFourEnv()
 
-    # Load AI agents
-    action_dim = env.action_space.n
-    flattened_state_size = env.observation_space.shape[0] * env.observation_space.shape[1]  # Assuming one-hot encoding
-
     checkpoint = torch.load('saved_agents/ppo_agents_after_train.pth')
 
-    ppo_agent1 = PPO(flattened_state_size, action_dim)
-    ppo_agent1.policy.load_state_dict(checkpoint['model_state_dict_player1'])
+    ppo_agent1 = PPOAgent(env)
+    ppo_agent1.model.load_state_dict(checkpoint['model_state_dict_player1'])
     ppo_agent1.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player1'])
 
-    ppo_agent2 = PPO(flattened_state_size, action_dim)
-    ppo_agent2.policy.load_state_dict(checkpoint['model_state_dict_player2'])
+    ppo_agent2 = PPOAgent(env)
+    ppo_agent2.model.load_state_dict(checkpoint['model_state_dict_player2'])
     ppo_agent2.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
 
     # Test scenarios
