@@ -6,7 +6,7 @@ import torch
 
 from app.dqn.hybrid import HybridAgent
 from app.dqn.dqn import DQNAgent
-from app.ddqn.ddqn import DDQNDAgent
+from app.ddqn.ddqn import DDQNAgent
 from app.a3c.a3c import A3CAgent
 from app.ppo.ppo import PPOAgent
 from app.environment import ConnectFourEnv
@@ -148,7 +148,7 @@ class ConnectFour(QMainWindow):
             return self.agent.select_action(self.agent.env.board, player=self.current_player, use_mcts=True)
         elif isinstance(self.agent, DQNAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
-        elif isinstance(self.agent, DDQNDAgent):
+        elif isinstance(self.agent, DDQNAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
         elif isinstance(self.agent, PPOAgent):
             return self.agent.select_action(self.agent.env.board)
@@ -200,12 +200,12 @@ class ConnectFour(QMainWindow):
                     self.load_agent('saved_agents/hybrid_agents_after_train.pth', player=1)
             elif agent_type == "DDQND":
                 if self.current_player == 1:
-                    self.agent = DDQNDAgent(ConnectFourEnv())
+                    self.agent = DDQNAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=2)
                 else:
-                    self.agent = DDQNDAgent(ConnectFourEnv())
+                    self.agent = DDQNAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=1)
-            elif agent_type == "PPOAgent":
+            elif agent_type == "PPO":
                 if self.current_player == 1:
                     self.agent = PPOAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/ppo_agents_after_train.pth', player=2)
@@ -233,7 +233,7 @@ class ConnectFour(QMainWindow):
                 elif player == 2:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
                     self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
-            elif isinstance(self.agent, DDQNDAgent):
+            elif isinstance(self.agent, DDQNAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
@@ -264,11 +264,11 @@ class ConnectFour(QMainWindow):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
-                    self.agent.policy.load_state_dict(checkpoint['model_state_dict_player1'])
-                    self.agent.policy.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
                 elif player == 2:
-                    self.agent.policy.load_state_dict(checkpoint['model_state_dict_player2'])
-                    self.agent.policy.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
 
             
             # Display a success message
