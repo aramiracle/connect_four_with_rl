@@ -1,57 +1,56 @@
-# Connect Four AI with Deep Reinforcemnet Learning
+# Connect Four AI with Deep Reinforcement Learning
 
-This project implements a playable Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained via a Deep Reinforcement Learning models include DQN, DDQND, PPO and A3C . The AI learns optimal gameplay by training against itself and saves its learned strategy to compete with human players.
+This project presents a Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained using various Deep Reinforcement Learning models, including DQN, DDQND, PPO, and A3C. The AI refines its gameplay by self-training and retains its learned strategy for competition against human players.
 
 ## Scripts Overview
 
 ### `gui.py` Connect Four Game GUI Summary
 
-This script utilizes PyQt6 to create a simple GUI for the Connect Four game. Key components include:
+This script employs PyQt6 to create a straightforward GUI for the Connect Four game. Key features include:
 
 #### ConnectFour Class (QMainWindow):
-- Inherits from QMainWindow to create the main window for the game.
-- Initializes UI elements, including the game board grid, buttons, and status label.
+- Creates the main window for the game, initializing UI elements like the game board grid, buttons, and status label.
 
 #### UI Initialization:
-- Uses QGridLayout to organize the game board and buttons.
-- Initializes a 2D array (`board`) to represent the game board with buttons.
-- Sets up click events for each button to trigger the `on_click` method.
+- Organizes the game board and buttons using QGridLayout.
+- Represents the game board with buttons using a 2D array (`board`).
+- Configures click events for buttons to trigger the `on_click` method.
 
 #### Button Click Handling (`on_click` method):
-- Updates the game board when a button is clicked.
-- Checks for a win or draw condition after each move.
-- Switches between players after each valid move.
+- Updates the game board upon button click.
+- Checks for win or draw conditions after each move.
+- Alternates between players after each valid move.
 
 #### Win Condition Check (`check_win` method):
-- Checks for a win condition in all directions (horizontal, vertical, and diagonal).
+- Examines win conditions in all directions (horizontal, vertical, and diagonal).
 
 #### Counting Consecutive Pieces (`count_aligned` method):
-- Counts consecutive pieces in a given direction to determine a win.
+- Determines a win by counting consecutive pieces in a specific direction.
 
 #### Counting in a Single Direction (`count_direction` method):
-- Counts pieces in a single direction for checking win conditions.
+- Counts pieces in a single direction to check for win conditions.
 
 #### Draw Condition Check (`check_draw` method):
-- Checks for a draw condition when the top row of each column is filled.
+- Verifies draw conditions when the top row of each column is filled.
 
 #### Example Usage:
 - Initializes the PyQt application, creates the ConnectFour window, and starts the application loop.
 
-This script provides a graphical interface for playing Connect Four, with player turns, win detection, and draw conditions.
+This script provides a graphical interface for playing Connect Four, featuring player turns, win detection, and draw conditions.
 
 ### `main.py` Summary
 
-The script, serving as the Connect Four game's entry point, leverages PyQt6 for window creation and game management. Key highlights include:
+This script, serving as the Connect Four game's entry point, utilizes PyQt6 for window creation and game management. Key features include:
 
 - **Window and Board Setup:**
-  - Initializes a 600x600 window with a 6x7 grid layout for the game board.
+  - Creates a 600x600 window with a 6x7 grid layout for the game board.
 
 - **Move Handling:**
-  - Manages both player and AI moves, updating the game state and UI correspondingly.
+  - Manages player and AI moves, updating the game state and UI accordingly.
 
 - **Model Loading:**
   - Allows users to choose from various agents (DQN, DDQND, Hybrid, PPO, A3C) via a dialog.
-  - Loads pre-trained agents based on the selected type and player, ensuring seamless integration.
+  - Loads pre-trained agents based on the selected type and player for seamless integration.
 
 - **Game Dynamics:**
   - Dynamically updates the game state and UI after each move, visually representing player and AI actions.
@@ -243,8 +242,6 @@ In each model provided a script which tests the performance of Connect Four AI a
 - Performs testing scenarios for AI vs. Random Bot, Random Bot vs. AI, and AI vs. AI.
 - Prints the results of each testing scenario.
 
-This script provides a comprehensive evaluation of the AI agents' performance in different scenarios, contributing to the assessment of their effectiveness in playing Connect Four.
-
 #### Example Usage:
 - Creates two PPO agents and trains them against each other.
 - Saves the trained models for future use.
@@ -261,6 +258,12 @@ pip install reqirement.txt
 This command will install PyQt6 for the GUI, PyTorch for deep learning algorithms, Gym for the game environment, NumPy for numerical computations, and tqdm for progress bars during training and testing.
 
 ## Usage
+
+First, set the python path in the terminal by running:
+
+```
+export PYTHONPATH=$PWD
+```
 
 ### Training the AI
 
