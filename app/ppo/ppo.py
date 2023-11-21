@@ -3,13 +3,13 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from app.environment import ConnectFourEnv
-from collections import namedtuple
 from tqdm import tqdm
 
 # Define the PPO model using PyTorch
 class PPO(nn.Module):
     def __init__(self):
         super(PPO, self).__init__()
+        # Neural network layers for PPO
         self.fc1 = nn.Linear(6 * 7 * 3, 256)
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 64)
@@ -17,6 +17,7 @@ class PPO(nn.Module):
         self.value_head = nn.Linear(64, 1)
 
     def forward(self, x):
+        # Forward pass of the PPO model
         x = x.long()
         x = F.one_hot(x.to(torch.int64), num_classes=3).float()
         x = x.view(-1, 6 * 7 * 3)
@@ -31,6 +32,7 @@ class PPO(nn.Module):
 # PPO agent
 class PPOAgent:
     def __init__(self, env, buffer_capacity=1000000, batch_size=64, clip_param=0.2, entropy_coeff=0.01, gamma=0.99):
+        # Proximal Policy Optimization (PPO) Agent
         self.env = env
         self.model = PPO()
         self.optimizer = optim.Adam(self.model.parameters())
@@ -42,11 +44,13 @@ class PPOAgent:
         self.buffer_capacity = buffer_capacity
 
     def add_to_buffer(self, experience):
+        # Add an experience tuple to the buffer
         self.buffer.append(experience)
         if len(self.buffer) > self.buffer_capacity:
             self.buffer = self.buffer[-self.buffer_capacity:]
 
     def select_action(self, state, training=True):
+        # Select an action using the PPO model
         with torch.no_grad():
             policy_logits, _ = self.model(state)
             action_probs = torch.softmax(policy_logits, dim=1)
@@ -67,6 +71,7 @@ class PPOAgent:
 
 
     def train_step(self):
+        # Perform a single training step for the PPO model
         states, actions, old_probs, values, rewards, dones = zip(*self.buffer)
         states = torch.stack(states)
         actions = torch.tensor(actions, dtype=torch.int64)
@@ -105,6 +110,7 @@ class PPOAgent:
                 self.optimizer.step()
 
     def compute_returns(self, rewards, dones):
+        # Compute the returns for the PPO training
         returns = []
         discounted_return = 0
         for i in range(len(rewards) - 1, -1, -1):
@@ -114,6 +120,7 @@ class PPOAgent:
         return returns
 
     def reset_buffer(self):
+        # Reset the buffer after each episode
         self.buffer = []
 
 

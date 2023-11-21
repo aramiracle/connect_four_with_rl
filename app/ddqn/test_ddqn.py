@@ -1,8 +1,8 @@
 import torch
 import random
 from tqdm import tqdm
-from ddqnd import DDQNDAgent
-from environment import ConnectFourEnv
+from app.ddqn.ddqn import DDQNAgent
+from app.environment import ConnectFourEnv
 
 class RandomBot:
     def __init__(self, env):
@@ -84,11 +84,11 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
 
     # Load AI agents
-    ai_agent_player1 = DDQNDAgent(env)  # Use DQN class directly
+    ai_agent_player1 = DDQNAgent(env)  # Use DQN class directly
     checkpoint_player1 = torch.load('saved_agents/ddqnd_agents_after_train.pth')
     ai_agent_player1.target_model.load_state_dict(checkpoint_player1['model_state_dict_player1'])
 
-    ai_agent_player2 = DDQNDAgent(env)  # Use DQN class directly
+    ai_agent_player2 = DDQNAgent(env)  # Use DQN class directly
     checkpoint_player2 = torch.load('saved_agents/ddqnd_agents_after_train.pth')
     ai_agent_player2.target_model.load_state_dict(checkpoint_player2['model_state_dict_player2'])
 

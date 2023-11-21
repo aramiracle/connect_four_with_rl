@@ -3,6 +3,7 @@ from app.environment import ConnectFourEnv  # Make sure to replace 'environment'
 
 class Node:
     def __init__(self, state, parent=None):
+        # Node in the MCTS tree with state information, parent link, children, visits, and value
         self.state = state
         self.parent = parent
         self.children = []
@@ -10,11 +11,13 @@ class Node:
         self.value = 0
 
 def uct(node):
+    # Upper Confidence Bound for Trees (UCT) calculation
     if node.visits == 0:
         return float('inf')
     return node.value / node.visits + np.sqrt(2 * np.log(node.parent.visits) / node.visits)
 
 def select(node, depth):
+    # Selection phase of MCTS
     if depth == 0 or not node.children:
         return node
 
@@ -22,6 +25,7 @@ def select(node, depth):
     return select(selected_node, depth - 1)
 
 def expand(node):
+    # Expansion phase of MCTS
     valid_actions = node.state.get_valid_actions()
     for action in valid_actions:
         child_state = node.state.clone()
@@ -31,6 +35,7 @@ def expand(node):
     return np.random.choice(node.children)
 
 def simulate(node, depth):
+    # Simulation phase of MCTS
     state = node.state.clone()
     while not state.is_terminal() and depth > 0:
         valid_actions = state.get_valid_actions()
@@ -40,17 +45,21 @@ def simulate(node, depth):
     return state.get_result()
 
 def backpropagate(node, result):
+    # Backpropagation phase of MCTS
     while node is not None:
         node.visits += 1
         node.value += result if result is not None else 0
         node = node.parent
+
 class MCTSAgent:
     def __init__(self, env, num_simulations=100, depth=10):
+        # Monte Carlo Tree Search (MCTS) agent
         self.env = env
         self.num_simulations = num_simulations
         self.depth = depth
 
     def get_best_action(self):
+        # Get the best action using MCTS
         root_state = self.env.clone()
         root_node = Node(root_state)
 

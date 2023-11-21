@@ -18,8 +18,7 @@ class PolicyValueNet(nn.Module):
 
     def forward(self, x):
         x = x.long()
-        # Apply one_hot encoding
-        x = F.one_hot(x.to(torch.int64), num_classes=3).float()
+        x = F.one_hot(x.to(torch.int64), num_classes=3).float()  # Apply one-hot encoding
         x = x.view(-1, 6 * 7 * 3)
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
@@ -122,7 +121,7 @@ class A3CAgent:
         dones = torch.tensor(rollout['dones'], dtype=torch.float32)
         values = torch.tensor(rollout['values'], dtype=torch.float32)
         return states, actions, rewards, next_states, dones, values
-    
+
     def select_action(self, state, training=True):
         with torch.no_grad():
             policy_logits, _ = self.model(state)
@@ -141,7 +140,7 @@ class A3CAgent:
                 action = valid_actions[best_valid_action]
 
             return action
-            
+
 def agent_vs_agent_train(agents, env, num_episodes=1000):
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
         state = env.reset()

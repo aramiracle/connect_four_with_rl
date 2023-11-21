@@ -1,16 +1,19 @@
-from dqn import DQNAgent
-from mcts import MCTSAgent
-from environment import ConnectFourEnv
+from app.dqn.dqn import DQNAgent
+from app.dqn.mcts import MCTSAgent
+from app.environment import ConnectFourEnv
 import torch
 from tqdm import tqdm
+
 class HybridAgent:
     def __init__(self, env, num_simulations=100, depth=2):
+        # Initialize a HybridAgent with DQN and MCTS components
         self.env = env
         self.dqn_agent_player1 = DQNAgent(self.env)
         self.dqn_agent_player2 = DQNAgent(self.env)  # Create a separate instance for player2
         self.mcts_agent = MCTSAgent(self.env, num_simulations=num_simulations, depth=depth)
 
     def load_pretrained_dqn_model(self, filepath):
+        # Load pre-trained DQN models for both players
         checkpoint = torch.load(filepath)
         self.dqn_agent_player1.model.load_state_dict(checkpoint['model_state_dict_player1'])
         self.dqn_agent_player1.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
@@ -22,6 +25,7 @@ class HybridAgent:
         self.dqn_agent_player2.optimizer.load_state_dict(checkpoint['optimizer_state_dict_player2'])
 
     def select_action(self, state, player, epsilon=0, use_mcts=True):
+        # Select an action using either MCTS or DQN, based on the specified conditions
         if use_mcts:
             action = self.mcts_agent.get_best_action()
             if action is not None:
@@ -39,10 +43,12 @@ class HybridAgent:
             return self.dqn_agent_player2.select_action(state, epsilon)
 
     def train_step(self):
+        # Perform a training step for both DQN agents
         self.dqn_agent_player1.train_step()
         self.dqn_agent_player2.train_step()
 
 def agent_vs_agent_train(agents, env, num_episodes=1000):
+    # Train two HybridAgents in an adversarial environment
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
         states = [env.reset(), env.reset()]
         total_rewards = [0, 0]

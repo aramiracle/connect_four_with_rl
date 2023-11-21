@@ -5,17 +5,19 @@ import torch.optim as optim
 from collections import namedtuple, deque
 from tqdm import tqdm
 import random
-from environment import ConnectFourEnv
+from app.environment import ConnectFourEnv
 
 # Define the Dueling DQN model using PyTorch
 class DuelingDQN(nn.Module):
     def __init__(self):
         super(DuelingDQN, self).__init__()
+        # Value stream layers
         self.fc1_value = nn.Linear(6 * 7 * 3, 256)
         self.fc2_value = nn.Linear(256, 128)
         self.fc3_value = nn.Linear(128, 64)
         self.fc4_value = nn.Linear(64, 1)
 
+        # Advantage stream layers
         self.fc1_advantage = nn.Linear(6 * 7 * 3, 256)
         self.fc2_advantage = nn.Linear(256, 128)
         self.fc3_advantage = nn.Linear(128, 64)
@@ -40,7 +42,6 @@ class DuelingDQN(nn.Module):
 
         # Combine value and advantage to get Q-values
         q_values = value + (advantage - advantage.mean(dim=1, keepdim=True))
-
         return q_values
 
 # Implement experience replay buffer
@@ -63,7 +64,7 @@ class ExperienceReplayBuffer:
         return len(self.buffer)
 
 # Define the DQN agent
-class DDQNDAgent:
+class DDQNAgent:
     def __init__(self, env, buffer_capacity=1000000, batch_size=64, target_update_frequency=10):
         self.env = env
         self.model = DuelingDQN()  # Change here
@@ -134,17 +135,17 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
     epsilon = epsilon_start
 
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
-        states = [env.reset(), env.reset()]
+        state = env.reset()
         total_rewards = [0, 0]
         done = False
 
         while not done:
             for i in range(len(agents)):
-                action = agents[i].select_action(states[i], epsilon)
+                action = agents[i].select_action(state, epsilon)
                 next_state, reward, done, _ = env.step(action)
                 total_rewards[i] += reward
-                agents[i].buffer.add(Experience(states[i], action, reward, next_state, done))
-                states[i] = next_state
+                agents[i].buffer.add(Experience(state, action, reward, next_state, done))
+                state = next_state
                 if done:
                     if env.winner == 1:
                         total_rewards[1] = -total_rewards[0]
@@ -168,7 +169,7 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
 
     # Players
-    dqn_agents = [DDQNDAgent(env), DDQNDAgent(env)]
+    dqn_agents = [DDQNAgent(env), DDQNAgent(env)]
 
     # Agent vs Agent Training
     agent_vs_agent_train(dqn_agents, env, num_episodes=30000)
