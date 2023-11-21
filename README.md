@@ -253,7 +253,7 @@ This script applies the PPO algorithm for training Connect Four agents, emphasiz
 Ensure you have Python 3.6 or higher and pip installed on your system. To install the required libraries for the Connect Four AI, execute the following command in your terminal:
 
 ```
-pip install reqirement.txt
+pip install -r reqirement.txt
 ```
 This command will install PyQt6 for the GUI, PyTorch for deep learning algorithms, Gym for the game environment, NumPy for numerical computations, and tqdm for progress bars during training and testing.
 
