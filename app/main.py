@@ -6,7 +6,7 @@ import torch
 
 from app.dqn.hybrid import HybridAgent
 from app.dqn.dqn import DQNAgent
-from app.ddqnd.ddqnd import DDQNDAgent
+from app.ddqn.ddqn import DDQNDAgent
 from app.a3c.a3c import A3CAgent
 from app.ppo.ppo import PPOAgent
 from app.environment import ConnectFourEnv
