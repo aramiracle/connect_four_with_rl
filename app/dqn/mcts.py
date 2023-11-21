@@ -36,6 +36,9 @@ def expand(node):
 
 def simulate(node, depth):
     # Simulation phase of MCTS
+    if node is None:
+        return 0  # Return a default result (0 in this case)
+
     state = node.state.clone()
     while not state.is_terminal() and depth > 0:
         valid_actions = state.get_valid_actions()
@@ -66,15 +69,62 @@ class MCTSAgent:
         for _ in range(self.num_simulations):
             node = select(root_node, self.depth)
             if not node.state.is_terminal():
-                node = expand(node)
+                node = expand(node, self.depth)
                 result = simulate(node, self.depth)
             else:
                 result = node.state.get_result()
 
             backpropagate(node, result)
 
+        # Filter out losing moves at depth 2
+        valid_actions = root_node.state.get_valid_actions()
+        valid_actions = [action for action in valid_actions if not is_instant_loss(root_node.state, action)]
+
+        if not valid_actions:
+            # If there are no valid actions after filtering, choose a random move
+            return np.random.choice(root_node.state.get_valid_actions())
+
         best_child_node = max(root_node.children, key=lambda x: x.visits)
         return best_child_node.state.get_last_move()[1]  # Get the column of the last move
+
+def expand(node, depth=2):
+    # Expansion phase of MCTS
+    valid_actions = node.state.get_valid_actions()
+
+    # Filter out losing moves at depth 2
+    if depth == 2:
+        valid_actions = [action for action in valid_actions if not is_instant_loss(node.state, action)]
+
+    if not valid_actions:
+        return None  # No valid actions to expand, return None
+
+    for action in valid_actions:
+        child_state = node.state.clone()
+        child_state.step(action)
+        child_node = Node(child_state, parent=node)
+        node.children.append(child_node)
+
+    if not node.children:
+        return None  # No child nodes created, return None
+
+    return np.random.choice(node.children)
+
+def is_instant_loss(state, action):
+    # Check if the opponent has an instant winning move in the next turn
+    next_state = state.clone()
+    next_state.step(action)
+    
+    opponent_valid_actions = next_state.get_valid_actions()
+    for opponent_action in opponent_valid_actions:
+        opponent_next_state = next_state.clone()
+        opponent_next_state.step(opponent_action)
+        if opponent_next_state.winner is not None:  # Update this line
+            return True
+
+    return False
+
+
+    return False
 
 if __name__ == "__main__":
     # Example of how to use MCTSAgent to get the best action
