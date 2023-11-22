@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt
 from functools import partial
 import torch
 
-from app.dqn.hybrid import HybridAgent
+from app.mcts.hybrid import HybridAgent
 from app.dqn.dqn import DQNAgent
 from app.ddqn.ddqn import DDQNAgent
 from app.a3c.a3c import A3CAgent
@@ -145,7 +145,7 @@ class ConnectFour(QMainWindow):
 
     def ai_select_move(self):
         if isinstance(self.agent, HybridAgent):
-            return self.agent.select_action(self.agent.env.board, player=self.current_player, use_mcts=True)
+            return self.agent.select_action(self.agent.env.board, epsilon=0)
         elif isinstance(self.agent, DQNAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
         elif isinstance(self.agent, DDQNAgent):
@@ -246,11 +246,11 @@ class ConnectFour(QMainWindow):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
-                    self.agent.dqn_agent_player1.model.load_state_dict(checkpoint['model_state_dict_player1'])
-                    self.agent.dqn_agent_player1.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
+                    self.agent.ddqn_agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.ddqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
                 elif player == 2:
-                    self.agent.dqn_agent_player2.model.load_state_dict(checkpoint['model_state_dict_player2'])
-                    self.agent.dqn_agent_player2.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
+                    self.agent.ddqn_agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.ddqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
             elif isinstance(self.agent, A3CAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
