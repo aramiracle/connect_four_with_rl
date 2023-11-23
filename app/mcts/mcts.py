@@ -34,14 +34,19 @@ class MCTSAgent:
 
         # Filter out losing moves at depth 2
         valid_actions = root_node.state.get_valid_actions()
+        print(valid_actions)
         valid_actions = [action for action in valid_actions if not is_instant_loss(root_node.state, action)]
+        print(valid_actions)
 
-        if not valid_actions:
-            # If there are no valid actions after filtering, choose a random move
+        # Find the best child among the valid actions
+        valid_child_nodes = [child for child in root_node.children if child.state.get_last_move()[1] in valid_actions]
+        if not valid_child_nodes:
+            # If there are no valid child nodes, choose a random move
             return np.random.choice(root_node.state.get_valid_actions())
 
-        best_child_node = max(root_node.children, key=lambda x: x.visits)
-        return best_child_node.state.get_last_move()[1]  # Get the column of the last move
+        best_child_node = max(valid_child_nodes, key=lambda x: x.visits)
+        return best_child_node.state.get_last_move()[1]  # Get the column of the last move of the best child
+
 
 def uct(node):
     # Upper Confidence Bound for Trees (UCT) calculation
@@ -56,16 +61,6 @@ def select(node, depth):
 
     selected_node = max(node.children, key=uct)
     return select(selected_node, depth - 1)
-
-def expand(node):
-    # Expansion phase of MCTS
-    valid_actions = node.state.get_valid_actions()
-    for action in valid_actions:
-        child_state = node.state.clone()
-        child_state.step(action)
-        child_node = Node(child_state, parent=node)
-        node.children.append(child_node)
-    return np.random.choice(node.children)
 
 def simulate(node, depth):
     # Simulation phase of MCTS
