@@ -107,8 +107,9 @@ class ConnectFour(QMainWindow):
         # Enable the board buttons at the start of the game
         self.enable_board_buttons()
 
-        self.current_player = 1 if self.player1_button.isChecked() else 2
-        if self.current_player == 2 and self.agent:
+        self.current_player = 1
+        if self.player2_button.isChecked() and self.agent:
+            # Start AI's turn for Player 2
             self.play_ai_turn()
 
     def on_click(self, col):
@@ -130,6 +131,7 @@ class ConnectFour(QMainWindow):
             self.game_over = True
         else:
             self.current_player = 3 - self.current_player
+            self.agent.env.current_player = 3 - self.agent.env.current_player
             self.play_ai_turn()
 
     def play_ai_turn(self):
@@ -142,6 +144,7 @@ class ConnectFour(QMainWindow):
             self.update_ui(row, action)
             self.check_game_over(row, action)
             self.current_player = 3 - self.current_player
+            self.agent.env.current_player = 3 - self.agent.env.current_player
 
     def ai_select_move(self):
         if isinstance(self.agent, HybridAgent):
@@ -157,7 +160,6 @@ class ConnectFour(QMainWindow):
         else:
             self.status_label.setText("No agent is loaded.")
             return None
-
 
     def update_game_state(self, action):
         for r in range(5, -1, -1):
@@ -220,7 +222,6 @@ class ConnectFour(QMainWindow):
                     self.agent = A3CAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/a3c_agents_after_train.pth', player=1)
 
-
     def load_agent(self, filepath, player):
         try:
             # Load the agent based on its type and player
@@ -246,11 +247,11 @@ class ConnectFour(QMainWindow):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
-                    self.agent.ddqn_agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
-                    self.agent.ddqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player1'])
                 elif player == 2:
-                    self.agent.ddqn_agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
-                    self.agent.ddqn_agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
             elif isinstance(self.agent, A3CAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)

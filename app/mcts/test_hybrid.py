@@ -69,7 +69,7 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
     draws = 0
 
     for _ in tqdm(range(num_games), desc='AI vs AI'):
-        winner = simulate_game(env, ai_agent1, ai_agent2, use_mcts=True)
+        winner = simulate_game(env, ai_agent1, ai_agent2)
 
         if winner == 1:
             ai1_wins += 1
@@ -87,10 +87,10 @@ if __name__ == '__main__':
     # Load AI agents
     checkpoint = torch.load('saved_agents/hybrid_agents_after_train.pth')
     ai_agent_player1 = HybridAgent(env)  # Use DQN class directly
-    ai_agent_player1.ddqn_agent.target_model.load_state_dict(checkpoint['model_state_dict_player1'])
+    ai_agent_player1.target_model.load_state_dict(checkpoint['model_state_dict_player1'])
 
     ai_agent_player2 = HybridAgent(env)  # Use DQN class directly
-    ai_agent_player2.ddqn_agent.target_model.load_state_dict(checkpoint['model_state_dict_player2'])
+    ai_agent_player2.target_model.load_state_dict(checkpoint['model_state_dict_player2'])
 
     # Test scenarios
     ai_vs_random_results = test_ai_vs_random(env, ai_agent_player1, num_games=100)

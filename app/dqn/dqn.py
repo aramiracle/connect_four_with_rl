@@ -70,7 +70,7 @@ class DQNAgent:
         if random.random() < epsilon:
             action = random.choice(available_actions)
         else:
-            state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+            state_tensor = state.unsqueeze(0)
             with torch.no_grad():
                 q_values = self.model(state_tensor).squeeze()
 
