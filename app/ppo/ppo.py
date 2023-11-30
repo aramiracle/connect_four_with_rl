@@ -4,6 +4,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from app.environment import ConnectFourEnv
 from tqdm import tqdm
+import torch.distributions as dist
 
 # Define the PPO model using PyTorch
 class PPO(nn.Module):
@@ -53,22 +54,21 @@ class PPOAgent:
         # Select an action using the PPO model
         with torch.no_grad():
             policy_logits, _ = self.model(state)
-            action_probs = torch.softmax(policy_logits, dim=1)
+            action_probs = dist.Categorical(logits=policy_logits)
 
             valid_actions = self.env.get_valid_actions()
 
             if training:
-                # During training, sample an action using multinomial from the valid actions
-                valid_action_probs = action_probs[0, valid_actions]
+                # During training, sample an action using the Categorical distribution
+                valid_action_probs = action_probs.probs[0, valid_actions]
                 action_index = torch.multinomial(valid_action_probs + 1e-9, 1).item()
                 action = valid_actions[action_index]
             else:
                 # During testing, choose the action with the highest probability from the valid actions
-                best_valid_action = torch.argmax(action_probs[0, valid_actions]).item()
+                best_valid_action = torch.argmax(action_probs.probs[0, valid_actions]).item()
                 action = valid_actions[best_valid_action]
 
         return action
-
 
     def train_step(self):
         # Perform a single training step for the PPO model
@@ -82,7 +82,7 @@ class PPOAgent:
 
         returns = self.compute_returns(rewards, dones)
 
-        for _ in range(3):  # Number of optimization epochs
+        for _ in range(5):  # Number of optimization epochs
             for i in range(0, len(self.buffer), self.batch_size):
                 batch_states = states[i:i + self.batch_size]
                 batch_actions = actions[i:i + self.batch_size]
@@ -90,21 +90,33 @@ class PPOAgent:
                 batch_values = values[i:i + self.batch_size]
                 batch_returns = returns[i:i + self.batch_size]
 
-                logits, new_values = self.model(batch_states)
-                new_probs = F.softmax(logits, dim=-1)
-                new_action_probs = new_probs.gather(1, batch_actions.unsqueeze(-1))
+                # Calculate old action probabilities using the old policy
+                with torch.no_grad():
+                    old_logits, _ = self.model(batch_states)
+                    old_action_probs = dist.Categorical(logits=old_logits)
+                    old_action_probs = old_action_probs.probs.gather(1, batch_actions.unsqueeze(-1))
 
+                # Calculate new action probabilities and values using the current policy
+                logits, new_values = self.model(batch_states)
+                action_probs = dist.Categorical(logits=logits)
+                new_action_probs = action_probs.probs.gather(1, batch_actions.unsqueeze(-1))
+
+                # Compute the ratio and surrogate loss using old and new action probabilities
                 ratio = new_action_probs / batch_old_probs
                 surr1 = ratio * (batch_returns - batch_values)
                 surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * (batch_returns - batch_values)
                 actor_loss = -torch.min(surr1, surr2).mean()
 
+                # Value loss
                 value_loss = F.mse_loss(new_values.squeeze(), batch_returns)
 
-                entropy = -(new_probs * torch.log(new_probs + 1e-8)).sum(dim=-1).mean()
+                # Entropy regularization
+                entropy = -(action_probs.probs * torch.log(action_probs.probs + 1e-8)).sum(dim=-1).mean()
 
+                # Overall loss
                 loss = actor_loss + 0.5 * value_loss - self.entropy_coeff * entropy
 
+                # Optimization step
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
@@ -160,7 +172,7 @@ if __name__ == '__main__':
     ppo_agents = [PPOAgent(env), PPOAgent(env)]
 
     # Agent vs Agent Training (PPO)
-    agent_vs_agent_train_ppo(ppo_agents, env, num_episodes=100000)
+    agent_vs_agent_train_ppo(ppo_agents, env, num_episodes=30000)
 
     # Save the trained agents
     torch.save({
