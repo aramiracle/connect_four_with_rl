@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from app.environment import ConnectFourEnv
+from app.environment2 import ConnectFourEnv
 from tqdm import tqdm
 import torch.distributions as dist
 
@@ -60,7 +60,7 @@ class PPOAgent:
 
             if training:
                 # During training, sample an action using the Categorical distribution
-                valid_action_probs = action_probs.probs[0, valid_actions]
+                valid_action_probs = action_probs.probs[0][valid_actions]
                 action_index = torch.multinomial(valid_action_probs + 1e-9, 1).item()
                 action = valid_actions[action_index]
             else:
@@ -135,7 +135,6 @@ class PPOAgent:
         # Reset the buffer after each episode
         self.buffer = []
 
-
 # Agent vs Agent Training using PPO
 def agent_vs_agent_train_ppo(agents, env, num_episodes=1000):
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training (PPO)", unit="episode"):
@@ -152,10 +151,6 @@ def agent_vs_agent_train_ppo(agents, env, num_episodes=1000):
                 agents[i].add_to_buffer((state, action, old_probs[0, action].item(), _, reward, done))
                 state = next_state
                 if done:
-                    if env.winner == 1:
-                        total_rewards[1] = -total_rewards[0]
-                    elif env.winner == 2:
-                        total_rewards[0] = -total_rewards[1]
                     break
 
         # Batch processing of experiences for each agent
@@ -163,7 +158,7 @@ def agent_vs_agent_train_ppo(agents, env, num_episodes=1000):
             agent.train_step()
             agent.reset_buffer()
 
-        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}")
+        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]}, Total Reward Player 2: {total_rewards[1]}")
 
 if __name__ == '__main__':
     env = ConnectFourEnv()

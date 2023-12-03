@@ -40,24 +40,47 @@ class ConnectFourEnv(gym.Env):
                 self.last_col = action
                 break
 
-        # Check for a win or a tie, and assign rewards accordingly
-        if self.check_win(row, action):
+        # Check for an instant loss and assign rewards accordingly
+        if  self.check_win(row, action):
             self.winner = self.current_player
             info = {'winner': f'Player {self.current_player}'}
-            reward = 1.0
+            reward = 100.0
             done = True
         elif torch.count_nonzero(self.board) == self.max_moves:
-            reward = (self.max_moves - 1) / self.max_moves
-            info = {'winner': f'Draw'}
+            reward = 50
+            info = {'winner': 'Draw'}
             done = True
+        elif self.check_instant_loss(row, action):
+            info = {'winner': 'Game is not finished yet.'}
+            reward = -10.0
+            done = False
         else:
-            reward = -1 / self.max_moves
-            info = {'winner': 'Game in not finished yet.'}
+            reward = -1
+            info = {'winner': 'Game is not finished yet.'}
             done = False
 
         # Alternate turns
         self.current_player = 3 - self.current_player
         return self.board, reward, done, info
+
+    # Add a method to check for instant loss
+    def check_instant_loss(self, last_row, last_col):
+        current_player = 3 - self.current_player  # Opponent's player
+        env_copy = self.clone()
+        # Check if the opponent has a winning move
+        for col in range(env_copy.board.shape[1]):
+            if env_copy.board[0][col] == 0:
+                # Simulate the opponent's move
+                for row in range(5, -1, -1):
+                    if env_copy.board[row][col] == 0:
+                        env_copy.board[row][col] = current_player
+                        if env_copy.check_win(row, col):
+                            # Reset the board to its original state
+                            env_copy.board[last_row][last_col] = 0
+                            return True
+                        break
+        return False
+
 
     def render(self):
         # Display the board to the console

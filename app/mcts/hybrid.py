@@ -5,7 +5,7 @@ import torch.optim as optim
 from collections import namedtuple, deque
 from tqdm import tqdm
 import random
-from app.environment import ConnectFourEnv
+from app.environment2 import ConnectFourEnv
 
 # Define the Dueling DQN model using PyTorch
 class DuelingDQN(nn.Module):
@@ -87,27 +87,42 @@ class HybridAgent:
         if random.random() < epsilon:
             action = random.choice(available_actions)
         else:
-            # Filter out instant loss moves
-            filtered_actions = [action for action in available_actions if not self.is_instant_loss(self.env, action)]
-            if not filtered_actions:
-                # If all actions lead to instant loss, choose a random action
-                action = random.choice(available_actions)
+            # Check for instant win moves
+            instant_win_actions = [action for action in available_actions if self.is_instant_win(self.env, action)]
+            if instant_win_actions:
+                # If there are instant win moves, choose one randomly
+                action = random.choice(instant_win_actions)
             else:
-                state_tensor = state.unsqueeze(0)  # Adding batch dimension
-                with torch.no_grad():
-                    q_values = self.model(state_tensor).squeeze()
+                # Filter out instant loss moves
+                filtered_actions = [action for action in available_actions if not self.is_instant_loss(self.env, action)]
+                if filtered_actions:
+                    # If there are filtered actions, choose the action with the highest Q-value among them
+                    state_tensor = state.unsqueeze(0)  # Adding batch dimension
+                    with torch.no_grad():
+                        q_values = self.model(state_tensor).squeeze()
 
-                # Mask the Q-values of invalid actions with a very negative number
-                masked_q_values = torch.full(q_values.shape, float('-inf'))
-                masked_q_values[filtered_actions] = q_values[filtered_actions]
+                    # Mask the Q-values of invalid actions with a very negative number
+                    masked_q_values = torch.full(q_values.shape, float('-inf'))
+                    masked_q_values[filtered_actions] = q_values[filtered_actions]
 
-                # Get the action with the highest Q-value among the valid actions
-                action = torch.argmax(masked_q_values).item()
+                    # Get the action with the highest Q-value among the valid actions
+                    action = torch.argmax(masked_q_values).item()
+                else:
+                    # If there are no filtered actions, choose a random action from all available actions
+                    action = random.choice(available_actions)
 
         # Ensure the model is back in training mode
         self.model.train()
 
         return action
+
+    def is_instant_win(self, env, action):
+        # Check if the agent has an instant winning move in the next turn
+        next_env = env.clone()
+        next_env.step(action)
+        if next_env.winner is not None:  # Update this line based on your winner identification
+            return True
+        return False
     
     def is_instant_loss(self, env, action):
         # Check if the opponent has an instant winning move in the next turn
@@ -160,7 +175,7 @@ class HybridAgent:
 
             self.num_training_steps += 1
 
-def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0.999):
+def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=0.2, epsilon_final=0.01, epsilon_decay=0.999):
     epsilon = epsilon_start
 
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
@@ -176,17 +191,13 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
                 agents[i].buffer.add(Experience(state, action, reward, next_state, done))
                 state = next_state
                 if done:
-                    if env.winner == 1:
-                        total_rewards[1] = -total_rewards[0]
-                    elif env.winner == 2:
-                        total_rewards[0] = -total_rewards[1]
                     break
 
         # Batch processing of experiences for each agent
         for agent in agents:
             agent.train_step()
 
-        tqdm.write(f"Episode: {episode}, Winner: {env.winner}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}, Epsilon: {epsilon:.2f}")
+        tqdm.write(f"Episode: {episode}, Winner: {env.winner}, Total Reward Player 1: {total_rewards[0]}, Total Reward Player 2: {total_rewards[1]}, Epsilon: {epsilon:.2f}")
 
         # Decay epsilon for the next episode
         epsilon = max(epsilon_final, epsilon * epsilon_decay)
@@ -201,7 +212,7 @@ if __name__ == '__main__':
     hybrid_agents = [HybridAgent(env), HybridAgent(env)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(hybrid_agents, env, num_episodes=10000)
+    agent_vs_agent_train(hybrid_agents, env, num_episodes=3000)
 
     # Save the trained agents
     torch.save({

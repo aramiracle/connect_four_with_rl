@@ -5,7 +5,9 @@ import torch.optim as optim
 from collections import namedtuple, deque
 from tqdm import tqdm
 import random
-from app.environment import ConnectFourEnv
+from app.environment2 import ConnectFourEnv
+
+from typing import List
 
 # Define the Dueling DQN model using PyTorch
 class DuelingDQN(nn.Module):
@@ -87,7 +89,7 @@ class DDQNAgent:
         if random.random() < epsilon:
             action = random.choice(available_actions)
         else:
-            state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)  # Adding batch dimension
+            state_tensor = state.unsqueeze(0)  # Adding batch dimension
             with torch.no_grad():
                 q_values = self.model(state_tensor).squeeze()
 
@@ -105,6 +107,7 @@ class DDQNAgent:
 
     def train_step(self):
         if len(self.buffer) >= self.batch_size:
+            
             experiences = list(self.buffer.sample(self.batch_size))  # Convert to list for better indexing
             states, actions, rewards, next_states, dones = zip(*experiences)
 
@@ -130,10 +133,11 @@ class DDQNAgent:
                 self.target_model.load_state_dict(self.model.state_dict())
 
             self.num_training_steps += 1
+        pass
 
-def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsilon_final=0.01, epsilon_decay=0.9999):
+def agent_vs_agent_train(agents:List[DDQNAgent], env:ConnectFourEnv, num_episodes=1000, epsilon_start=0.5, epsilon_final=0.01, epsilon_decay=0.999):
     epsilon = epsilon_start
-
+    
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
         state = env.reset()
         total_rewards = [0, 0]
@@ -147,17 +151,13 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
                 agents[i].buffer.add(Experience(state, action, reward, next_state, done))
                 state = next_state
                 if done:
-                    if env.winner == 1:
-                        total_rewards[1] = -total_rewards[0]
-                    elif env.winner == 2:
-                        total_rewards[0] = -total_rewards[1]
                     break
 
         # Batch processing of experiences for each agent
         for agent in agents:
             agent.train_step()
 
-        tqdm.write(f"Episode: {episode}, Winner: {env.winner}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}, Epsilon: {epsilon:.2f}")
+        tqdm.write(f"Episode: {episode}, Winner: {env.winner}, Player 1: Reward {total_rewards[0]}, Player 2: Reward {total_rewards[1]}, Epsilon: {epsilon:.2f}")
 
         # Decay epsilon for the next episode
         epsilon = max(epsilon_final, epsilon * epsilon_decay)
