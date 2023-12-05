@@ -32,11 +32,11 @@ class PPO(nn.Module):
 
 # PPO agent
 class PPOAgent:
-    def __init__(self, env, buffer_capacity=1000000, batch_size=64, clip_param=0.2, entropy_coeff=0.01, gamma=0.99):
+    def __init__(self, env, buffer_capacity=1000000, batch_size=64, clip_param=0.9, entropy_coeff=0.001, gamma=0.99, learning_rate=1e-5):
         # Proximal Policy Optimization (PPO) Agent
         self.env = env
         self.model = PPO()
-        self.optimizer = optim.Adam(self.model.parameters())
+        self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
         self.batch_size = batch_size
         self.clip_param = clip_param
         self.entropy_coeff = entropy_coeff
@@ -82,7 +82,7 @@ class PPOAgent:
 
         returns = self.compute_returns(rewards, dones)
 
-        for _ in range(5):  # Number of optimization epochs
+        for _ in range(1):  # Number of optimization epochs
             for i in range(0, len(self.buffer), self.batch_size):
                 batch_states = states[i:i + self.batch_size]
                 batch_actions = actions[i:i + self.batch_size]

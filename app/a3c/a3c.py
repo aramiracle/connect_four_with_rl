@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
-from app.environment import ConnectFourEnv
+from app.environment2 import ConnectFourEnv
 from tqdm import tqdm
 
 # Define a simple neural network for policy and value estimation
@@ -29,7 +29,7 @@ class PolicyValueNet(nn.Module):
 
 # A3C agent implementation
 class A3CAgent:
-    def __init__(self, env, num_workers=4, gamma=0.99, lr=1e-3):
+    def __init__(self, env, num_workers=4, gamma=0.99, lr=1e-5):
         self.env = env
         self.num_workers = num_workers
         self.gamma = gamma
@@ -131,7 +131,7 @@ class A3CAgent:
 
             if training:
                 # During training, sample an action using multinomial from the valid actions
-                valid_action_probs = action_probs[0, valid_actions]
+                valid_action_probs = action_probs[0][valid_actions]
                 action_index = torch.multinomial(valid_action_probs, 1).item()
                 action = valid_actions[action_index]
             else:
@@ -155,18 +155,12 @@ def agent_vs_agent_train(agents, env, num_episodes=1000):
                 total_rewards[i] += reward
                 state = next_state
                 if done:
-                    if env.winner == 1:
-                        total_rewards[1] = -total_rewards[0]
-                    elif env.winner == 2:
-                        total_rewards[0] = -total_rewards[1]
-                    else:
-                        total_rewards = [0, 0]
                     break
 
         for agent in agents:
             agent.train(agent.unpack_rollout(agent.run_episode()))
 
-        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}")
+        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]}, Total Reward Player 2: {total_rewards[1]}")
 
     env.close()
 
