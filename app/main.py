@@ -4,7 +4,7 @@ from PyQt6.QtCore import Qt
 from functools import partial
 import torch
 
-from app.mcts.hybrid import HybridAgent
+from app.hybrid.hybrid import HybridAgent
 from app.dqn.dqn import DQNAgent
 from app.ddqn.ddqn import DDQNAgent
 from app.a3c.a3c import A3CAgent

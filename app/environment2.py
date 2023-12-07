@@ -56,11 +56,7 @@ class ConnectFourEnv(gym.Env):
             reward = -100.0
             done = False
         elif reward:
-            reward = reward
-            info = {'winner': 'Game is not finished yet.'}
-            done = False
-        else:
-            reward = -10
+            reward = reward - 10
             info = {'winner': 'Game is not finished yet.'}
             done = False
 
