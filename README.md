@@ -2,6 +2,11 @@
 
 This project presents a Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained using various Deep Reinforcement Learning models, including DQN, DDQND, PPO, and A3C. The AI refines its gameplay by self-training and retains its learned strategy for competition against human players.
 
+![Game Interface](game_interface.png)
+
+This project presents a Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained using various Deep Reinforcement Learning models, including DQN, DDQND, PPO, and A3C. The AI refines its gameplay by self-training and retains its learned strategy for competition against human players.
+
+
 ## Scripts Overview
 
 ### `gui.py` Connect Four Game GUI Summary
@@ -193,6 +198,39 @@ This script implements the Categorical 51 (C51) algorithm for training Connect F
   - The training loop, action selection, and episode completion are handled, with epsilon decay for exploration.
 - **Save Trained Agents:**
   - The script saves the trained C51 agents' states, target model states, and optimizer states after training.
+
+### `hybrid.py` Hybrid Dueling DQN Agent Training Script Summary
+
+This script defines a hybrid Dueling DQN agent for training in a Connect Four environment. Key components include:
+
+**DuelingDQN Model:**
+- A PyTorch neural network (`DuelingDQN`) implementing the Dueling DQN architecture, combining both value and advantage streams.
+- Utilizes one-hot encoding for board states.
+
+**Experience Replay Buffer:**
+- `ExperienceReplayBuffer` class managing a buffer of experiences for training stability.
+
+**HybridAgent Class:**
+- Agent using the hybrid Dueling DQN to learn optimal actions in the Connect Four environment.
+- Implements Double Q-learning by using the target model for action selection during training.
+- Introduces a penalty term for instant loss moves and adapts the loss calculation accordingly.
+- Performs a training step using the Mean Squared Error loss.
+- Includes a mechanism for updating the target model periodically.
+
+**Instant Loss Move Penalty:**
+- The agent identifies and penalizes instant loss moves during training, introducing a penalty term in the loss calculation.
+
+**Agent vs Agent Training:**
+- `agent_vs_agent_train` function facilitates training Hybrid Dueling DQN agents against each other.
+- Training loop, action selection, and episode completion are handled.
+
+**Example Usage:**
+- Creates a Connect Four environment and two Hybrid Dueling DQN agents.
+- Trains the agents in an adversarial setting.
+- Saves the trained agents' states for future use.
+
+This script introduces a hybrid Dueling DQN architecture to enhance Q-value estimation and introduces a penalty mechanism to discourage instant loss moves during training. The training process is facilitated in an adversarial setting, and the trained agents' states are saved for future use.
+
 
 ### Connect Four AI Testing Script Summary
 
