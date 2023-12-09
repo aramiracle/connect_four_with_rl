@@ -254,6 +254,11 @@ In each model provided a script which tests the performance of Connect Four AI a
   - Performs testing scenarios for AI vs. Random Bot, Random Bot vs. AI, and AI vs. AI.
   - Prints the results of each testing scenario.
 
+- **Performance Summary:**
+  - All baseline bots demonstrate an approximate 85% win rate against the `random_bot`.
+  - The Hybrid Dueling DQN agent stands out with an outstanding 97% win rate against the `random_bot`, showcasing exceptional performance.
+
+
 ## Installation
 
 Ensure you have Python 3.6 or higher and pip installed on your system. To install the required libraries for the Connect Four AI, execute the following command in your terminal:
