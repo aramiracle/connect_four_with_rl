@@ -8,6 +8,7 @@ from app.hybrid.hybrid import HybridAgent
 from app.dqn.dqn import DQNAgent
 from app.ddqn.ddqn import DDQNAgent
 from app.a3c.a3c import A3CAgent
+from app.c51.c51 import C51Agent
 from app.ppo.ppo import PPOAgent
 from app.environment import ConnectFourEnv
 
@@ -153,6 +154,8 @@ class ConnectFour(QMainWindow):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
         elif isinstance(self.agent, DDQNAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
+        elif isinstance(self.agent, C51Agent):
+            return self.agent.select_action(self.agent.env.board, epsilon=0)
         elif isinstance(self.agent, PPOAgent):
             return self.agent.select_action(self.agent.env.board)
         elif isinstance(self.agent, A3CAgent):
@@ -184,7 +187,7 @@ class ConnectFour(QMainWindow):
 
     def select_agent(self):
         agent_type, ok = QInputDialog.getItem(self, "Select Agent Type", 
-                                            "Choose an agent:", ["DQN","DDQND", "Hybrid", "PPO", "A3C"], 0, False)
+                                            "Choose an agent:", ["DQN","DDQND", "Hybrid", "PPO", "A3C", "C51"], 0, False)
         if ok and agent_type:
             if agent_type == "DQN":
                 if self.current_player == 1:
@@ -221,6 +224,13 @@ class ConnectFour(QMainWindow):
                 else:
                     self.agent = A3CAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/a3c_agents_after_train.pth', player=1)
+            elif agent_type == "C51":
+                if self.current_player == 1:
+                    self.agent = C51Agent(ConnectFourEnv())
+                    self.load_agent('saved_agents/c51_agents_after_train.pth', player=2)
+                else:
+                    self.agent = C51Agent(ConnectFourEnv())
+                    self.load_agent('saved_agents/c51_agents_after_train.pth', player=1)
 
     def load_agent(self, filepath, player):
         try:
@@ -262,6 +272,15 @@ class ConnectFour(QMainWindow):
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
             elif isinstance(self.agent, PPOAgent):
+                # Load Hybrid agent
+                checkpoint = torch.load(filepath)
+                if player == 1:
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                elif player == 2:
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+            elif isinstance(self.agent, C51Agent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
