@@ -25,45 +25,83 @@ def simulate_game(env, player1, player2):
         state, _, done, _ = env.step(action)
     return env.winner
 
-def test_alpha_zero_vs_random_both_players(env, az_agent, num_games=1000):
-    """Tests the AlphaZero agent against a random bot for both player orders."""
-    az_wins_first_player = 0
-    az_wins_second_player = 0
+def test_ai_vs_random_bot(env, az_agent, num_games=1000):
+    """Tests a az agent against a random bot over a specified number of games."""
+    az_wins = 0
+    random_bot_wins = 0
     draws = 0
 
     random_bot = RandomBot(env)
 
-    for _ in tqdm(range(num_games), desc='AlphaZero vs Random Bot (Both Players)'):
-        # Test scenario: AlphaZero as the first player
-        winner_first_player = simulate_game(env, az_agent, random_bot)
-        if winner_first_player == 1:
-            az_wins_first_player += 1
-
-        # Test scenario: AlphaZero as the second player
-        winner_second_player = simulate_game(env, random_bot, az_agent)
-        if winner_second_player == 2:
-            az_wins_second_player += 1
-
-        # Check for draws in both scenarios
-        if winner_first_player is None and winner_second_player is None:
+    for _ in tqdm(range(num_games), desc='AZ vs Random Bot'):
+        winner = simulate_game(env, az_agent, random_bot)
+        if winner == 1:
+            az_wins += 1
+        elif winner == 2:
+            random_bot_wins += 1
+        elif winner is None:
             draws += 1
 
-    return az_wins_first_player, az_wins_second_player, draws
+    return az_wins, random_bot_wins, draws
+
+def test_random_bot_vs_ai(env, az_agent, num_games=1000):
+    """Tests a random bot against a az agent over a specified number of games."""
+    random_bot_wins = 0
+    az_wins = 0
+    draws = 0
+
+    random_bot = RandomBot(env)
+
+    for _ in tqdm(range(num_games), desc='Random Bot vs AZ'):
+        winner = simulate_game(env, random_bot, az_agent)
+        if winner == 1:
+            random_bot_wins += 1
+        elif winner == 2:
+            az_wins += 1
+        elif winner is None:
+            draws += 1
+
+    return random_bot_wins, az_wins, draws
+
+def test_az_vs_az(env, az_agent1, az_agent2, num_games=1000):
+    """Tests two az agents against each other over a specified number of games."""
+    az_1_wins = 0
+    az_2_wins = 0
+    draws = 0
+
+    for _ in tqdm(range(num_games), desc='AZ vs AZ'):
+        winner = simulate_game(env, az_agent1, az_agent2)
+
+        if winner == 1:
+            az_1_wins += 1
+        elif winner == 2:
+            az_2_wins += 1
+        elif winner is None:
+            draws += 1
+
+    return az_1_wins, az_2_wins, draws
 
 if __name__ == '__main__':
-    # Create environment
     env = ConnectFourEnv()
 
-    # Load AlphaZero agent
-    az_checkpoint = torch.load('saved_agents/alpha_zero_agent_after_train.pth')
-    az_agent = AlphaZeroAgent(env, AlphaZeroNetwork(), mcts_simulations=20)
-    az_agent.network.load_state_dict(az_checkpoint['model_state_dict'])
+    az_network1 = AlphaZeroNetwork()
+    az_network2 = AlphaZeroNetwork()
 
-    # Test scenario: AlphaZero vs Random Bot (Both Players)
-    az_vs_random_both_players_results = test_alpha_zero_vs_random_both_players(env, az_agent, num_games=100)
+    # Load az agents
+    checkpoint = torch.load('saved_agents/alpha_zero_agents_after_train.pth')
+    
+    az_agent_player1 = AlphaZeroAgent(env, az_network1)
+    az_agent_player1.network.load_state_dict(checkpoint['model_state_dict_agent1'])
+
+    az_agent_player2 = AlphaZeroAgent(env, az_network2)
+    az_agent_player2.network.load_state_dict(checkpoint['model_state_dict_agent2'])
+
+    # Test scenarios
+    az_vs_random_results = test_ai_vs_random_bot(env, az_agent_player1, num_games=1000)
+    random_vs_az_results = test_random_bot_vs_ai(env, az_agent_player2, num_games=1000)
+    az_vs_az_results = test_az_vs_az(env, az_agent_player1, az_agent_player2, num_games=1000)
 
     # Print results
-    print(f"AlphaZero vs Random Bot (Both Players) Results: "
-          f"AlphaZero Wins as First Player - {az_vs_random_both_players_results[0]}, "
-          f"AlphaZero Wins as Second Player - {az_vs_random_both_players_results[1]}, "
-          f"Draws - {az_vs_random_both_players_results[2]}")
+    print(f"az vs Random Bot Results: az Wins - {az_vs_random_results[0]}, Random Bot Wins - {az_vs_random_results[1]}, Draws - {az_vs_random_results[2]}")
+    print(f"Random Bot vs az Results: Random Bot Wins - {random_vs_az_results[0]}, az Wins - {random_vs_az_results[1]}, Draws - {random_vs_az_results[2]}")
+    print(f"az vs az Results: Player 1 Wins - {az_vs_az_results[0]}, Player 2 Wins - {az_vs_az_results[1]}, Draws - {az_vs_az_results[2]}")

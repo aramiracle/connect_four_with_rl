@@ -4,28 +4,49 @@ import numpy as np
 
 # Define the Monte Carlo Tree Search (MCTS) algorithm
 class MonteCarloTreeSearch:
-    def __init__(self, network, simulations=1000, exploration_weight=1.0):
+    def __init__(self, network, simulations=1000, exploration_weight=1.0, depth_limit=10):
         self.network = network
         self.simulations = simulations
         self.exploration_weight = exploration_weight
+        self.depth_limit = depth_limit
 
     def search(self, env):
-        root_node = Node(env)
-        
+        root = Node(env)
+
         for _ in range(self.simulations):
-            node = root_node
-            while not node.is_terminal() and node.is_fully_expanded():
-                action = node.select_action(self.exploration_weight)
-                node = node.get_child(action)
+            node = root
+            current_depth = 0
 
-            if not node.is_terminal():
-                env, _ = node.get_state_and_reward()
-                value = self.evaluate_state(env)
-                node.expand(value)
+            while not node.is_terminal() and current_depth < self.depth_limit:
+                if not node.is_fully_expanded():
+                    action = node.select_untried_action(env)
+                    next_state, _, _, _ = env.step(action)
+                    node = node.expand(action, self.network, next_state)
+                    break
+                else:
+                    action, node = node.select_child(self.c_puct)
+                    _, _, _, _ = env.step(action)
 
-        action_probs = root_node.get_action_probs(self.exploration_weight)
-        action_probs /= np.sum(action_probs)
-        return action_probs
+                current_depth += 1
+
+            if current_depth >= self.depth_limit:
+                break  # Break the loop if the depth limit is reached
+
+            value = self.simulate(env)
+            node.backpropagate(value)
+
+        return root.get_action_probabilities(self.exploration_weight)
+    
+    def simulate(self, env):
+        # Perform a simple random rollout simulation and return the result
+        while not env.is_terminal():
+            action = np.random.choice(env.get_valid_actions())
+            _, _, done, _ = env.step(action)
+            if done:
+                break
+
+        # Return the result of the simulation (e.g., reward)
+        return 0.5  # Placeholder, replace with actual result
 
     def evaluate_state(self, env):
         # Use the neural network to evaluate the state
@@ -57,6 +78,10 @@ class Node:
         values = [child.value_sum / (child.visits + 1e-10) + exploration_term for action, child in self.children.items()]
         return np.argmax(values)
 
+    def select_untried_action(self, env):
+        untried_actions = [a for a in range(env.action_space.n) if a not in self.children]
+        return np.random.choice(untried_actions)
+
     def get_child(self, action):
         if action not in self.children:
             next_env = self.env.clone()
@@ -71,12 +96,22 @@ class Node:
             # Handle the case when last_row and last_col are None
             return self.env, 0.0  # You may adjust the reward accordingly
 
-    def expand(self, value):
-        self.is_expanded = True
+    def expand(self, action, network, next_state):
+        child_node = self.get_child(action)
+        with torch.no_grad():
+            _, value = network.forward(next_state)
+        child_node.is_expanded = True
+        child_node.visits += 1
+        child_node.value_sum += value
+        return child_node  # Add this line to return the child_node
+
+    def backpropagate(self, value):
         self.visits += 1
         self.value_sum += value
+        if self.parent is not None:
+            self.parent.backpropagate(value)
 
-    def get_action_probs(self, exploration_weight):
+    def get_action_probabilities(self, exploration_weight):
         action_probs = np.zeros(7)  # Assuming there are 7 possible actions
         total_visits = sum(child.visits for child in self.children.values())
 
@@ -91,5 +126,3 @@ class Node:
             action_probs = np.ones(7) / 7  # Assuming there are 7 possible actions
 
         return action_probs
-
-

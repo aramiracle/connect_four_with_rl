@@ -69,42 +69,56 @@ class AlphaZeroAgent:
         loss.backward()
         self.optimizer.step()
 
-# AlphaZero training function for ConnectFourEnv
-def alpha_zero_train(agent, env, num_episodes=1000):
-    for episode in tqdm(range(num_episodes), desc="AlphaZero Training", unit="episode"):
-        states, policies, values = [], [], []
+# AlphaZero vs AlphaZero training function for ConnectFourEnv
+def alpha_zero_vs_alpha_zero_train(agent1, agent2, env, num_episodes=1000):
+    for episode in tqdm(range(num_episodes), desc="AlphaZero vs AlphaZero Training", unit="episode"):
+        states1, policies1, values1 = [], [], []
+        states2, policies2, values2 = [], [], []
         env.reset()
         done = False
 
         while not done:
-            action_probs = agent.mcts.search(env)
-            action = np.random.choice(len(action_probs), p=action_probs)
-            next_state, _, done, _ = env.step(action)
+            # Agent 1's turn
+            action1 = agent1.select_action(env)
+            next_state1, _, done, _ = env.step(action1)
+            states1.append(env.board)
+            policies1.append(agent1.mcts.search(env))
+            values1.append(0.5)  # Placeholder for demonstration, update with actual values
 
-            # Store the state, policy, and value for training
-            states.append(env.board)
-            policies.append(action_probs)
-            values.append(0.5)  # Placeholder for demonstration, update with actual values
+            if done:
+                break
 
-            state = next_state
+            # Agent 2's turn
+            action2 = agent2.select_action(env)
+            next_state2, _, done, _ = env.step(action2)
+            states2.append(env.board)
+            policies2.append(agent2.mcts.search(env))
+            values2.append(0.5)  # Placeholder for demonstration, update with actual values
 
-        # Train the agent using the collected data
-        agent.train(states, policies, values)
+        # Train agents using the collected data
+        if states1:
+            agent1.train(states1, policies1, values1)
+        if states2:
+            agent2.train(states2, policies2, values2)
 
 if __name__ == '__main__':
     env = ConnectFourEnv()
 
-    # Create an instance of the AlphaZero network
-    az_network = AlphaZeroNetwork()
+    # Create two instances of the AlphaZero network
+    az_network1 = AlphaZeroNetwork()
+    az_network2 = AlphaZeroNetwork()
 
-    # Create an instance of the AlphaZero agent for ConnectFourEnv
-    az_agent = AlphaZeroAgent(env, az_network, mcts_simulations=20)
+    # Create two instances of the AlphaZero agent for ConnectFourEnv
+    az_agent1 = AlphaZeroAgent(env, az_network1, mcts_simulations=20)
+    az_agent2 = AlphaZeroAgent(env, az_network2, mcts_simulations=20)
 
-    # AlphaZero Training for ConnectFourEnv
-    alpha_zero_train(az_agent, env, num_episodes=3000)
+    # AlphaZero vs AlphaZero Training for ConnectFourEnv
+    alpha_zero_vs_alpha_zero_train(az_agent1, az_agent2, env, num_episodes=300000)
 
-    # Save the trained AlphaZero agent
+    # Save the trained AlphaZero agents
     torch.save({
-        'model_state_dict': az_agent.network.state_dict(),
-        'optimizer_state_dict': az_agent.optimizer.state_dict(),
-    }, 'saved_agents/alpha_zero_agent_after_train.pth')
+        'model_state_dict_agent1': az_agent1.network.state_dict(),
+        'optimizer_state_dict_agent1': az_agent1.optimizer.state_dict(),
+        'model_state_dict_agent2': az_agent2.network.state_dict(),
+        'optimizer_state_dict_agent2': az_agent2.optimizer.state_dict(),
+    }, 'saved_agents/alpha_zero_agents_after_train.pth')
