@@ -181,7 +181,7 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=0.5, epsi
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
         state = env.reset()
         total_rewards = [0, 0]
-        done = False
+        done = False 
 
         while not done:
             for i in range(len(agents)):
