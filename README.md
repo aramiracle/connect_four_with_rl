@@ -4,9 +4,6 @@ This project presents a Connect Four game with a graphical user interface (GUI),
 
 ![Game Interface](game_interface.png)
 
-This project presents a Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained using various Deep Reinforcement Learning models, including DQN, DDQND, PPO, and A3C. The AI refines its gameplay by self-training and retains its learned strategy for competition against human players.
-
-
 ## Scripts Overview
 
 ### `gui.py` Connect Four Game GUI Summary
