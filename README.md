@@ -252,8 +252,7 @@ In each model provided a script which tests the performance of Connect Four AI a
   - Prints the results of each testing scenario.
 
 - **Performance Summary:**
-  - All baseline bots demonstrate an approximate 85% win rate against the `random_bot`.
-  - The Hybrid Dueling DQN agent stands out with an outstanding 97% win rate against the `random_bot`, showcasing exceptional performance.
+  - The Hybrid Dueling DQN agent stands out with an outstanding 95% to 97% win rate against the `random_bot`, showcasing exceptional performance.
 
 
 ## Installation
