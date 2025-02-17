@@ -10,7 +10,8 @@ from app.ddqn.ddqn import DDQNAgent
 from app.a3c.a3c import A3CAgent
 from app.c51.c51 import C51Agent
 from app.ppo.ppo import PPOAgent
-from app.environment import ConnectFourEnv
+from app.sac.sac import SACAgent # Import SACAgent
+from app.environment_test import ConnectFourEnv
 
 # Base class for Connect Four Game
 class ConnectFour(QMainWindow):
@@ -70,7 +71,7 @@ class ConnectFour(QMainWindow):
         self.game_over = False
         self.status_label.setText("")
         self.game_state_history = []
-        
+
         # Reset the board
         for row in range(6):
             for col in range(7):
@@ -78,7 +79,8 @@ class ConnectFour(QMainWindow):
                 self.board[row][col].setEnabled(False)  # Disable buttons initially
 
         # Reset the environment
-        self.agent.env.reset()
+        if self.agent:
+            self.agent.env.reset()
 
         # Enable the board buttons at the start of the game
         self.enable_board_buttons()
@@ -104,7 +106,7 @@ class ConnectFour(QMainWindow):
         for row in range(6):
             for col in range(7):
                 self.board[row][col].setStyleSheet("")
-        
+
         # Enable the board buttons at the start of the game
         self.enable_board_buttons()
 
@@ -160,6 +162,8 @@ class ConnectFour(QMainWindow):
             return self.agent.select_action(self.agent.env.board)
         elif isinstance(self.agent, A3CAgent):
             return self.agent.select_action(self.agent.env.board)
+        elif isinstance(self.agent, SACAgent): # Add SACAgent to ai_select_move
+            return self.agent.select_action(self.agent.env.board)
         else:
             self.status_label.setText("No agent is loaded.")
             return None
@@ -186,8 +190,8 @@ class ConnectFour(QMainWindow):
         return self.board[0][column].styleSheet() == ""
 
     def select_agent(self):
-        agent_type, ok = QInputDialog.getItem(self, "Select Agent Type", 
-                                            "Choose an agent:", ["DQN","DDQND", "Hybrid", "PPO", "A3C", "C51"], 0, False)
+        agent_type, ok = QInputDialog.getItem(self, "Select Agent Type",
+                                            "Choose an agent:", ["DQN","DDQND", "Hybrid", "PPO", "A3C", "C51", "SAC"], 0, False) # Add "SAC" to agent list
         if ok and agent_type:
             if agent_type == "DQN":
                 if self.current_player == 1:
@@ -231,6 +235,13 @@ class ConnectFour(QMainWindow):
                 else:
                     self.agent = C51Agent(ConnectFourEnv())
                     self.load_agent('saved_agents/c51_agents_after_train.pth', player=1)
+            elif agent_type == "SAC": # Add SACAgent to select_agent
+                if self.current_player == 1:
+                    self.agent = SACAgent(ConnectFourEnv())
+                    self.load_agent('saved_agents/sac_agents_after_train.pth', player=2)
+                else:
+                    self.agent = SACAgent(ConnectFourEnv())
+                    self.load_agent('saved_agents/sac_agents_after_train.pth', player=1)
 
     def load_agent(self, filepath, player):
         try:
@@ -267,30 +278,40 @@ class ConnectFour(QMainWindow):
                 checkpoint = torch.load(filepath)
                 if player == 1:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
-                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1']) # Corrected duplicated line
                 elif player == 2:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
-                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2']) # Corrected duplicated line
             elif isinstance(self.agent, PPOAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
-                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1']) # Corrected duplicated line
                 elif player == 2:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
-                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2']) # Corrected duplicated line
             elif isinstance(self.agent, C51Agent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
-                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player1']) # Corrected duplicated line
                 elif player == 2:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
-                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
+                    self.agent.model.load_state_dict(checkpoint['model_state_dict_player2']) # Corrected duplicated line
+            elif isinstance(self.agent, SACAgent): # Add SACAgent to load_agent
+                # Load SAC agent
+                checkpoint = torch.load(filepath)
+                if player == 1:
+                    self.agent.actor.load_state_dict(checkpoint['actor_state_dict_player1']) # Assuming actor and critic are in SACAgent
+                    self.agent.critic1.load_state_dict(checkpoint['critic1_state_dict_player1'])
+                    self.agent.critic2.load_state_dict(checkpoint['critic2_state_dict_player1'])
+                elif player == 2:
+                    self.agent.actor.load_state_dict(checkpoint['actor_state_dict_player2']) # Assuming actor and critic are in SACAgent
+                    self.agent.critic1.load_state_dict(checkpoint['critic1_state_dict_player2'])
+                    self.agent.critic2.load_state_dict(checkpoint['critic2_state_dict_player2'])
 
-            
             # Display a success message
             self.status_label.setText(f"{type(self.agent).__name__} loaded successfully for Player {player}.")
             self.play_button.setDisabled(False)

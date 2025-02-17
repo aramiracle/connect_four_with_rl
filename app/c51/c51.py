@@ -6,7 +6,7 @@ from collections import namedtuple, deque
 from tqdm import tqdm
 import random
 import numpy as np
-from app.environment2 import ConnectFourEnv
+from app.environment_train import ConnectFourEnv
 
 # Define the C51 model using PyTorch
 class C51(nn.Module):

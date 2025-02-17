@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from app.environment2 import ConnectFourEnv
+from app.environment_train import ConnectFourEnv
 from tqdm import tqdm
 import torch.distributions as dist
 

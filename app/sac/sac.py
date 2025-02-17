@@ -3,9 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Categorical
-from app.environment2 import ConnectFourEnv
+from app.environment_train import ConnectFourEnv
 from tqdm import tqdm
-import numpy as np
 
 # Define the Actor network for SAC
 class ActorNet(nn.Module):
@@ -241,7 +240,7 @@ if __name__=='__main__':
 
 
     agents = [agent1, agent2]
-    agent_vs_agent_train_sac(agents, env, num_episodes=10000) # Train agents against each other
+    agent_vs_agent_train_sac(agents, env, num_episodes=30000) # Train agents against each other
 
     # Save the trained model
     torch.save({

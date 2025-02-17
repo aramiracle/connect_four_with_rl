@@ -5,7 +5,7 @@ import torch.optim as optim
 from collections import namedtuple, deque
 from tqdm import tqdm
 import random
-from app.environment2 import ConnectFourEnv
+from app.environment_train import ConnectFourEnv
 
 from typing import List
 
