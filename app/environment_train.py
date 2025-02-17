@@ -19,9 +19,13 @@ class ConnectFourEnv(gym.Env):
         self.last_row = None
         self.last_col = None
 
-    def reset(self):
-        # Reset the board and randomly select which player starts (optional: can fix starting player if needed)
-        self.board = torch.zeros((6, 7), dtype=torch.float32)
+    def reset(self, initial_board=None):
+        if initial_board is not None:
+            # Reset the board to the provided initial_board
+            self.board = torch.tensor(initial_board, dtype=torch.float32).clone() # Ensure it's a tensor and cloned
+        else:
+            # Default reset: empty board
+            self.board = torch.zeros((6, 7), dtype=torch.float32)
         self.current_player = 1 # Can be randomized if needed: 1 if np.random.rand() < 0.5 else 2
         self.winner = None
         # Reset last move
