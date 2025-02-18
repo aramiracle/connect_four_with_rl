@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 import torch
+import timeit
 
 # Custom environment for Connect Four game following the gym interface
 class ConnectFourEnv(gym.Env):
@@ -19,7 +20,8 @@ class ConnectFourEnv(gym.Env):
         self.last_row = None
         self.last_col = None
 
-    def reset(self, initial_board=None):
+    def reset(self, initial_board=None, seed=None, options=None): # Added seed and options for gym API compliance
+        super().reset(seed=seed) # Call parent reset for seed handling
         if initial_board is not None:
             # Reset the board to the provided initial_board
             self.board = torch.tensor(initial_board, dtype=torch.float32).clone() # Ensure it's a tensor and cloned
@@ -31,8 +33,8 @@ class ConnectFourEnv(gym.Env):
         # Reset last move
         self.last_row = None
         self.last_col = None
-        # Return initial observation
-        return self.board # Gym v26 requires returning observation and info
+
+        return self.board
 
     def step(self, action):
         # Ensure action is valid (within action space and column is not full)

@@ -31,6 +31,7 @@ class ConvDuelingDQN(nn.Module):
     def forward(self, x):
         x = x.long()
         x = F.one_hot(x.to(torch.int64), num_classes=3).float()
+        x = x.unsqueeze(0) if len(x.size())==3 else x
         x = x.permute(0, 3, 1, 2) # Reshape to (batch_size, channels, width, height)
 
         # Convolutional layers
@@ -162,7 +163,7 @@ class HybridAgent:
                 filtered_actions = [action for action in available_actions if not self.is_instant_loss(self.env, action)]
                 if filtered_actions:
                     # If there are filtered actions, choose the action with the highest Q-value among them
-                    state_tensor = state.unsqueeze(0).to(device)  # Adding batch dimension, move state to device
+                    state_tensor = state.to(device)  # Adding batch dimension, move state to device
                     with torch.no_grad():
                         q_values = self.model(state_tensor).squeeze().cpu() # Move output back to CPU for action selection (argmax)
 

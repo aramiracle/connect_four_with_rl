@@ -135,7 +135,7 @@ def agent_vs_agent_train(agents, env, num_episodes=1000, epsilon_start=1.0, epsi
         for agent in agents:
             agent.train_step()
 
-        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]:.4f}, Total Reward Player 2: {total_rewards[1]:.4f}, Epsilon: {epsilon:.2f}")
+        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]}, Total Reward Player 2: {total_rewards[1]}, Epsilon: {epsilon:.2f}")
 
         epsilon = max(epsilon_final, epsilon * epsilon_decay)
 
