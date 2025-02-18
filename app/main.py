@@ -10,8 +10,9 @@ from app.ddqn.ddqn import DDQNAgent
 from app.a3c.a3c import A3CAgent
 from app.c51.c51 import C51Agent
 from app.ppo.ppo import PPOAgent
-from app.sac.sac import SACAgent # Import SACAgent
+from app.sac.sac import SACAgent
 from app.environment_test import ConnectFourEnv
+from app.alphabeta.alphabeta import AlphaBetaAgent
 
 # Base class for Connect Four Game
 class ConnectFour(QMainWindow):
@@ -162,7 +163,9 @@ class ConnectFour(QMainWindow):
             return self.agent.select_action(self.agent.env.board)
         elif isinstance(self.agent, A3CAgent):
             return self.agent.select_action(self.agent.env.board)
-        elif isinstance(self.agent, SACAgent): # Add SACAgent to ai_select_move
+        elif isinstance(self.agent, SACAgent):
+            return self.agent.select_action(self.agent.env.board)
+        elif isinstance(self.agent, AlphaBetaAgent):
             return self.agent.select_action(self.agent.env.board)
         else:
             self.status_label.setText("No agent is loaded.")
@@ -191,7 +194,7 @@ class ConnectFour(QMainWindow):
 
     def select_agent(self):
         agent_type, ok = QInputDialog.getItem(self, "Select Agent Type",
-                                            "Choose an agent:", ["DQN","DDQND", "Hybrid", "PPO", "A3C", "C51", "SAC"], 0, False) # Add "SAC" to agent list
+                                            "Choose an agent:", ["DQN","DDQND", "Hybrid", "PPO", "A3C", "C51", "SAC", "AlphaBeta"], 0, False) # Add "SAC" and "AlphaBeta" to agent list
         if ok and agent_type:
             if agent_type == "DQN":
                 if self.current_player == 1:
@@ -202,11 +205,11 @@ class ConnectFour(QMainWindow):
                     self.load_agent('saved_agents/dqn_agents_after_train.pth', player=1)
             elif agent_type == "Hybrid":
                 if self.current_player == 1:
-                    self.agent = HybridAgent(ConnectFourEnv())
-                    self.load_agent('saved_agents/hybrid_agents_after_train.pth', player=2)
+                    self.agent = HybridAgent(ConnectFourEnv(), player_piece=2)
+                    self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=2)
                 else:
-                    self.agent = HybridAgent(ConnectFourEnv())
-                    self.load_agent('saved_agents/hybrid_agents_after_train.pth', player=1)
+                    self.agent = HybridAgent(ConnectFourEnv(), player_piece=1)
+                    self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=1)
             elif agent_type == "DDQND":
                 if self.current_player == 1:
                     self.agent = DDQNAgent(ConnectFourEnv())
@@ -242,8 +245,14 @@ class ConnectFour(QMainWindow):
                 else:
                     self.agent = SACAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/sac_agents_after_train.pth', player=1)
-
-    def load_agent(self, filepath, player):
+            elif agent_type == "AlphaBeta":
+                if self.current_player == 1:
+                    self.agent = AlphaBetaAgent(ConnectFourEnv(), player=2) # Agent plays as player 2
+                    self.load_agent()
+                else:
+                    self.agent = AlphaBetaAgent(ConnectFourEnv(), player=1) # Agent plays as player 1
+                    self.load_agent()
+    def load_agent(self, filepath=None, player=None):
         try:
             # Load the agent based on its type and player
             if isinstance(self.agent, DQNAgent):

@@ -10,37 +10,46 @@ from app.environment_train import ConnectFourEnv
 from typing import List
 
 # Define the Dueling DQN model using PyTorch
-class DuelingDQN(nn.Module):
+class ConvDuelingDQN(nn.Module):
     def __init__(self):
-        super(DuelingDQN, self).__init__()
-        # Value stream layers
-        self.fc1_value = nn.Linear(6 * 7 * 3, 256)
-        self.fc2_value = nn.Linear(256, 128)
-        self.fc3_value = nn.Linear(128, 64)
-        self.fc4_value = nn.Linear(64, 1)
+        super(ConvDuelingDQN, self).__init__()
+        # Convolutional layers for feature extraction - Reduced channels
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1) # Reduced to 16 channels
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1) # Reduced to 32 channels
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1) # Added conv3 with 64 channels
 
-        # Advantage stream layers
-        self.fc1_advantage = nn.Linear(6 * 7 * 3, 256)
-        self.fc2_advantage = nn.Linear(256, 128)
-        self.fc3_advantage = nn.Linear(128, 64)
-        self.fc4_advantage = nn.Linear(64, 7)
+        # Value stream layers - Reduced size, Adjusted input size for FC layers
+        self.fc_value = nn.Linear(6 * 7 * 64, 128) # Adjusted input size to 6*7*64 due to conv3
+        self.fc1_value = nn.Linear(128, 32) # Reduced FC size
+        self.fc2_value = nn.Linear(32, 1)
+
+        # Advantage stream layers - Reduced size, Adjusted input size for FC layers
+        self.fc_advantage = nn.Linear(6 * 7 * 64, 128) # Adjusted input size to 6*7*64 due to conv3
+        self.fc1_advantage = nn.Linear(128, 32) # Reduced FC size
+        self.fc2_advantage = nn.Linear(32, 7)
 
     def forward(self, x):
         x = x.long()
         x = F.one_hot(x.to(torch.int64), num_classes=3).float()
-        x = x.view(-1, 6 * 7 * 3)
+        x = x.unsqueeze(0) if len(x.size())==3 else x
+        x = x.permute(0, 3, 1, 2) # Reshape to (batch_size, channels, width, height)
+
+        # Convolutional layers
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x)) # Added conv3
+
+        x = x.reshape(x.size(0), -1) # Flatten for FC layers
 
         # Value stream
-        x_value = F.relu(self.fc1_value(x))
-        x_value = F.relu(self.fc2_value(x_value))
-        x_value = F.relu(self.fc3_value(x_value))
-        value = self.fc4_value(x_value)
+        x_value = F.relu(self.fc_value(x))
+        x_value = F.relu(self.fc1_value(x_value))
+        value = self.fc2_value(x_value)
 
         # Advantage stream
-        x_advantage = F.relu(self.fc1_advantage(x))
-        x_advantage = F.relu(self.fc2_advantage(x_advantage))
-        x_advantage = F.relu(self.fc3_advantage(x_advantage))
-        advantage = self.fc4_advantage(x_advantage)
+        x_advantage = F.relu(self.fc_advantage(x))
+        x_advantage = F.relu(self.fc1_advantage(x_advantage))
+        advantage = self.fc2_advantage(x_advantage)
 
         # Combine value and advantage to get Q-values
         q_values = value + (advantage - advantage.mean(dim=1, keepdim=True))
@@ -69,8 +78,8 @@ class ExperienceReplayBuffer:
 class DDQNAgent:
     def __init__(self, env, buffer_capacity=1000000, batch_size=64, target_update_frequency=10):
         self.env = env
-        self.model = DuelingDQN()  # Change here
-        self.target_model = DuelingDQN()  # Change here
+        self.model = ConvDuelingDQN()  # Change here
+        self.target_model = ConvDuelingDQN()  # Change here
         self.target_model.load_state_dict(self.model.state_dict())
         self.buffer = ExperienceReplayBuffer(buffer_capacity)
         self.batch_size = batch_size
@@ -135,9 +144,11 @@ class DDQNAgent:
             self.num_training_steps += 1
         pass
 
-def agent_vs_agent_train(agents:List[DDQNAgent], env:ConnectFourEnv, num_episodes=1000, epsilon_start=0.5, epsilon_final=0.01, epsilon_decay=0.999):
+def agent_vs_agent_train(agents, env, num_episodes=200000, epsilon_start=0.5, epsilon_final=0.01, epsilon_decay=0.9999):
     epsilon = epsilon_start
-    
+    reward_history_p1 = []
+    reward_history_p2 = []
+
     for episode in tqdm(range(num_episodes), desc="Agent vs Agent Training", unit="episode"):
         state = env.reset()
         total_rewards = [0, 0]
@@ -146,7 +157,7 @@ def agent_vs_agent_train(agents:List[DDQNAgent], env:ConnectFourEnv, num_episode
         while not done:
             for i in range(len(agents)):
                 action = agents[i].select_action(state, epsilon)
-                next_state, reward, done, _ = env.step(action)
+                next_state, reward, done, info = env.step(action)
                 total_rewards[i] += reward
                 agents[i].buffer.add(Experience(state, action, reward, next_state, done))
                 state = next_state
@@ -157,7 +168,18 @@ def agent_vs_agent_train(agents:List[DDQNAgent], env:ConnectFourEnv, num_episode
         for agent in agents:
             agent.train_step()
 
-        tqdm.write(f"Episode: {episode}, Winner: {env.winner}, Player 1: Reward {total_rewards[0]}, Player 2: Reward {total_rewards[1]}, Epsilon: {epsilon:.2f}")
+        reward_history_p1.append(total_rewards[0])
+        reward_history_p2.append(total_rewards[1])
+
+        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]}, Total Reward Player 2: {total_rewards[1]}, Epsilon: {epsilon:.2f}")
+
+        if episode % 100 == 0 and episode > 0:
+            avg_reward_p1 = sum(reward_history_p1[-100:]) / 100
+            avg_reward_p2 = sum(reward_history_p2[-100:]) / 100
+            tqdm.write(f"--- Episode {episode} Report ---")
+            tqdm.write(f"Average Reward over last 100 episodes - Player 1: {avg_reward_p1:.2f}, Player 2: {avg_reward_p2:.2f}")
+            tqdm.write(f"------------------------------")
+
 
         # Decay epsilon for the next episode
         epsilon = max(epsilon_final, epsilon * epsilon_decay)
@@ -172,7 +194,7 @@ if __name__ == '__main__':
     dqn_agents = [DDQNAgent(env), DDQNAgent(env)]
 
     # Agent vs Agent Training
-    agent_vs_agent_train(dqn_agents, env, num_episodes=30000)
+    agent_vs_agent_train(dqn_agents, env, num_episodes=100000)
 
     # Save the trained agents
     torch.save({

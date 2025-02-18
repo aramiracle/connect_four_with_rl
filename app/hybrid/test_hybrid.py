@@ -12,15 +12,15 @@ class RandomBot:
         available_actions = [col for col in range(self.env.action_space.n) if self.env.board[0][col] == 0]
         return random.choice(available_actions) if available_actions else None
 
-def simulate_game(env, player1, player2, epsilon=0):
+def simulate_game(env, player1, player2):
     """Simulates a single game between two AI agents."""
     state = env.reset()
     done = False
     while not done:
         if env.current_player == 1:
-            action = player1.select_action(state, epsilon)
+            action = player1.select_action(state, epsilon=0)
         else:
-            action = player2.select_action(state, epsilon)
+            action = player2.select_action(state, epsilon=0)
         state, _, done, _ = env.step(action)
     return env.winner
 
@@ -99,21 +99,21 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
     return ai1_wins, ai2_wins, draws, ai1_win_percentage
 
 if __name__ == '__main__':
-    # Create environment
     env = ConnectFourEnv()
 
     # Load AI agents
-    checkpoint = torch.load('saved_agents/hybrid_agents_after_train.pth')
-    ai_agent_player1 = HybridAgent(env)  # Use DQN class directly
-    ai_agent_player1.target_model.load_state_dict(checkpoint['model_state_dict_player1'])
+    ai_agent_player1 = HybridAgent(env, player_piece=1)  # Use DQN class directly
+    checkpoint_player1 = torch.load('saved_agents/ddqnd_agents_after_train.pth')
+    ai_agent_player1.target_model.load_state_dict(checkpoint_player1['model_state_dict_player1'])
 
-    ai_agent_player2 = HybridAgent(env)  # Use DQN class directly
-    ai_agent_player2.target_model.load_state_dict(checkpoint['model_state_dict_player2'])
+    ai_agent_player2 = HybridAgent(env, player_piece=2)  # Use DQN class directly
+    checkpoint_player2 = torch.load('saved_agents/ddqnd_agents_after_train.pth')
+    ai_agent_player2.target_model.load_state_dict(checkpoint_player2['model_state_dict_player2'])
 
     # Test scenarios
     ai_vs_random_results = test_ai_vs_random(env, ai_agent_player1, num_games=1000)
     random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player2, num_games=1000)
-    ai_vs_ai_results = test_ai_vs_ai(env, ai_agent_player1, ai_agent_player2, num_games=100)
+    ai_vs_ai_results = test_ai_vs_ai(env, ai_agent_player1, ai_agent_player2, num_games=10)
 
     # Print results
     print(f"AI vs Random Bot Results: AI Wins - {ai_vs_random_results[0]}, Random Bot Wins - {ai_vs_random_results[1]}, Draws - {ai_vs_random_results[2]}, AI Win Percentage: {ai_vs_random_results[3]:.2f}%")
