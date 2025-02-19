@@ -1,7 +1,7 @@
 import torch
 import random
 from tqdm import tqdm
-from app.hybrid.hybrid import HybridAgent
+from app.hybrid.hybrid_sac import HybridSACAgent
 from app.environment_test import ConnectFourEnv
 from app.alphabeta.alphabeta import AlphaBetaAgent
 
@@ -77,10 +77,10 @@ if __name__ == '__main__':
 
     # Load Hybrid AI agents
     checkpoint = torch.load('saved_agents/ddqnd_agents_after_train.pth')
-    hybrid_agent_player1 = HybridAgent(env,player_piece=1)  # Use HybridAgent class
+    hybrid_agent_player1 = HybridSACAgent(env,player_piece=1)  # Use HybridAgent class
     hybrid_agent_player1.target_model.load_state_dict(checkpoint['model_state_dict_player1'])
 
-    hybrid_agent_player2 = HybridAgent(env, player_piece=2)  # Use HybridAgent class
+    hybrid_agent_player2 = HybridSACAgent(env, player_piece=2)  # Use HybridAgent class
     hybrid_agent_player2.target_model.load_state_dict(checkpoint['model_state_dict_player2'])
 
     # Create AlphaBeta Agents

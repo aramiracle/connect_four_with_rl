@@ -196,7 +196,39 @@ This script implements the Categorical 51 (C51) algorithm for training Connect F
 - **Save Trained Agents:**
   - The script saves the trained C51 agents' states, target model states, and optimizer states after training.
 
-### `hybrid.py` Hybrid Dueling DQN Agent Training Script Summary
+### `sac.py` Soft Actor-Critic (SAC) Agent Training Script Summary
+
+This script trains Connect Four agents using the Soft Actor-Critic (SAC) reinforcement learning algorithm.
+
+- **SAC Agent Implementation:**
+  - Implements a `SACAgent` class with Actor and Critic networks.
+  - Utilizes Convolutional Neural Networks (CNNs) for both Actor (`ActorNet`) and Critic (`CriticNet`) to process game states.
+  - Employs a `ReplayBuffer` for off-policy learning, storing and sampling experiences.
+- **Actor and Critic Networks:**
+  - `ActorNet`: CNN that learns a stochastic policy, outputting action probabilities.
+  - `CriticNet`: CNN that estimates Q-values for state-action pairs. Two critics are used for stability (clipped double Q-learning) with target networks and soft updates.
+- **Training Process:**
+  - **Off-policy SAC:** Trains using experiences sampled from the `ReplayBuffer`.
+  - **Critic Update:** Minimizes MSE loss between predicted and target Q-values (using target networks).
+  - **Actor Update:** Maximizes expected return and entropy, encouraging exploration.
+  - **Soft Updates:** Target critic networks are updated slowly for stable learning.
+- **Agent vs Agent Training:**
+  - `agent_vs_agent_train_sac` function trains two SAC agents in self-play.
+  - Both agents learn from shared game experiences stored in their replay buffers.
+- **Action Selection:**
+  - `select_action` method samples actions from the actor's stochastic policy during training and chooses the best action during evaluation.
+- **Saving Trained Agents:**
+  - Saves trained Actor and Critic network states and optimizer states for both agents after training.
+
+**Key Features of SAC Implementation:**
+
+- **Off-Policy Learning:** Efficiently learns from past experiences in the replay buffer.
+- **Stochastic Policy:** Encourages exploration and robust strategies through probabilistic action selection.
+- **Entropy Maximization:** Promotes exploration and potentially finds more diverse and optimal policies.
+- **Target Networks & Soft Updates:** Stabilizes training of the critic networks.
+- **CNNs for Feature Extraction:** Effectively learns spatial patterns from the Connect Four board.
+
+### `hybrid_ddqnd.py` and `hybrid_sac` Hybrid Dueling DQN and Hybrid Actor-Critic Agents Training Script Summary
 
 This script defines a hybrid Dueling DQN agent for training in a Connect Four environment. Key components include:
 
@@ -252,7 +284,7 @@ In each model provided a script which tests the performance of Connect Four AI a
   - Prints the results of each testing scenario.
 
 - **Performance Summary:**
-  - The Hybrid Dueling DQN agent stands out with an outstanding 95% to 97% win rate against the `random_bot`, showcasing exceptional performance.
+  - The Hybrid Soft Actor-Critic agent stands out with an outstanding 95% to 98% win rate against the `random_bot`, showcasing exceptional performance.
 
 
 ## Installation

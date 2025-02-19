@@ -4,13 +4,14 @@ from PyQt6.QtCore import Qt
 from functools import partial
 import torch
 
-from app.hybrid.hybrid import HybridAgent
+from app.hybrid.hybrid_ddqnd import HybridDDQNAgent
 from app.dqn.dqn import DQNAgent
 from app.ddqn.ddqn import DDQNAgent
 from app.a3c.a3c import A3CAgent
 from app.c51.c51 import C51Agent
 from app.ppo.ppo import PPOAgent
 from app.sac.sac import SACAgent
+from app.hybrid.hybrid_sac import HybridSACAgent
 from app.environment_test import ConnectFourEnv
 from app.alphabeta.alphabeta import AlphaBetaAgent
 
@@ -151,7 +152,7 @@ class ConnectFour(QMainWindow):
             self.agent.env.current_player = 3 - self.agent.env.current_player
 
     def ai_select_move(self):
-        if isinstance(self.agent, HybridAgent):
+        if isinstance(self.agent, HybridDDQNAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
         elif isinstance(self.agent, DQNAgent):
             return self.agent.select_action(self.agent.env.board, epsilon=0)
@@ -165,6 +166,8 @@ class ConnectFour(QMainWindow):
             return self.agent.select_action(self.agent.env.board)
         elif isinstance(self.agent, SACAgent):
             return self.agent.select_action(self.agent.env.board)
+        elif isinstance(self.agent, HybridSACAgent):
+            return self.agent.select_action(torch.tensor(self.agent.env.board).unsqueeze(0).float(), training=False) # Modified for HybridSACAgent
         elif isinstance(self.agent, AlphaBetaAgent):
             return self.agent.select_action(self.agent.env.board)
         else:
@@ -194,7 +197,7 @@ class ConnectFour(QMainWindow):
 
     def select_agent(self):
         agent_type, ok = QInputDialog.getItem(self, "Select Agent Type",
-                                            "Choose an agent:", ["DQN","DDQND", "Hybrid", "PPO", "A3C", "C51", "SAC", "AlphaBeta"], 0, False) # Add "SAC" and "AlphaBeta" to agent list
+                                            "Choose an agent:", ["DQN","DDQND", "HybridDDQN", "PPO", "A3C", "C51", "SAC", "HybridSAC", "AlphaBeta"], 0, False) # Add "SAC", "HybridSAC" and "AlphaBeta" to agent list
         if ok and agent_type:
             if agent_type == "DQN":
                 if self.current_player == 1:
@@ -203,12 +206,12 @@ class ConnectFour(QMainWindow):
                 else:
                     self.agent = DQNAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/dqn_agents_after_train.pth', player=1)
-            elif agent_type == "Hybrid":
+            elif agent_type == "HybridDDQN":
                 if self.current_player == 1:
-                    self.agent = HybridAgent(ConnectFourEnv(), player_piece=2)
+                    self.agent = HybridDDQNAgent(ConnectFourEnv(), player_piece=2)
                     self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=2)
                 else:
-                    self.agent = HybridAgent(ConnectFourEnv(), player_piece=1)
+                    self.agent = HybridDDQNAgent(ConnectFourEnv(), player_piece=1)
                     self.load_agent('saved_agents/ddqnd_agents_after_train.pth', player=1)
             elif agent_type == "DDQND":
                 if self.current_player == 1:
@@ -245,12 +248,19 @@ class ConnectFour(QMainWindow):
                 else:
                     self.agent = SACAgent(ConnectFourEnv())
                     self.load_agent('saved_agents/sac_agents_after_train.pth', player=1)
+            elif agent_type == "HybridSAC": # Add HybridSACAgent to select_agent
+                if self.current_player == 1:
+                    self.agent = HybridSACAgent(ConnectFourEnv(),player_piece=2)
+                    self.load_agent('saved_agents/sac_agents_after_train.pth', player=2) # Assuming same saved path as SAC for now, adjust if needed
+                else:
+                    self.agent = HybridSACAgent(ConnectFourEnv(), player_piece=1)
+                    self.load_agent('saved_agents/sac_agents_after_train.pth', player=1) # Assuming same saved path as SAC for now, adjust if needed
             elif agent_type == "AlphaBeta":
                 if self.current_player == 1:
-                    self.agent = AlphaBetaAgent(ConnectFourEnv(), player=2) # Agent plays as player 2
+                    self.agent = AlphaBetaAgent(ConnectFourEnv(), depth=5, player=2) # Agent plays as player 2
                     self.load_agent()
                 else:
-                    self.agent = AlphaBetaAgent(ConnectFourEnv(), player=1) # Agent plays as player 1
+                    self.agent = AlphaBetaAgent(ConnectFourEnv(), depth=5, player=1) # Agent plays as player 1
                     self.load_agent()
     def load_agent(self, filepath=None, player=None):
         try:
@@ -273,7 +283,7 @@ class ConnectFour(QMainWindow):
                 elif player == 2:
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2'])
                     self.agent.target_model.load_state_dict(checkpoint['target_model_state_dict_player2'])
-            elif isinstance(self.agent, HybridAgent):
+            elif isinstance(self.agent, HybridDDQNAgent):
                 # Load Hybrid agent
                 checkpoint = torch.load(filepath)
                 if player == 1:
@@ -311,6 +321,17 @@ class ConnectFour(QMainWindow):
                     self.agent.model.load_state_dict(checkpoint['model_state_dict_player2']) # Corrected duplicated line
             elif isinstance(self.agent, SACAgent): # Add SACAgent to load_agent
                 # Load SAC agent
+                checkpoint = torch.load(filepath)
+                if player == 1:
+                    self.agent.actor.load_state_dict(checkpoint['actor_state_dict_player1']) # Assuming actor and critic are in SACAgent
+                    self.agent.critic1.load_state_dict(checkpoint['critic1_state_dict_player1'])
+                    self.agent.critic2.load_state_dict(checkpoint['critic2_state_dict_player1'])
+                elif player == 2:
+                    self.agent.actor.load_state_dict(checkpoint['actor_state_dict_player2']) # Assuming actor and critic are in SACAgent
+                    self.agent.critic1.load_state_dict(checkpoint['critic1_state_dict_player2'])
+                    self.agent.critic2.load_state_dict(checkpoint['critic2_state_dict_player2'])
+            elif isinstance(self.agent, HybridSACAgent): # Add HybridSACAgent to load_agent
+                # Load HybridSAC agent - reusing SAC loading logic as it's similar
                 checkpoint = torch.load(filepath)
                 if player == 1:
                     self.agent.actor.load_state_dict(checkpoint['actor_state_dict_player1']) # Assuming actor and critic are in SACAgent

@@ -106,7 +106,7 @@ def is_instant_loss(board, player_piece):
 
 
 # Define the DQN agent
-class HybridAgent:
+class HybridDDQNAgent:
     def __init__(self, env, player_piece, buffer_capacity=1000000, batch_size=128, target_update_frequency=500, learning_rate=0.0001, instant_loss_penalty=1.0):
         self.env = env
         self.player_piece = player_piece # Store player piece
@@ -290,7 +290,7 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
 
     # Players - using smaller model with one more layer - now passing player_piece
-    hybrid_agents = [HybridAgent(env, player_piece=1, use_small_model=True), HybridAgent(env, player_piece=2, use_small_model=True)]
+    hybrid_agents = [HybridDDQNAgent(env, player_piece=1, use_small_model=True), HybridDDQNAgent(env, player_piece=2, use_small_model=True)]
 
     # Agent vs Agent Training
     agent_vs_agent_train(hybrid_agents, env, num_episodes=200000) # Increased episodes
