@@ -1,6 +1,6 @@
 # Connect Four AI with Deep Reinforcement Learning
 
-This project presents a Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained using various Deep Reinforcement Learning models, including DQN, DDQN, PPO, A3C, Hybrid and C51. The AI refines its gameplay by self-training and retains its learned strategy for competition against human players.
+This project presents a Connect Four game with a graphical user interface (GUI), where the opponent is an AI trained using various Deep Reinforcement Learning models, including DQN, DDQN, PPO, A3C, Hybrid, C51 and SAC. The AI refines its gameplay by self-training and retains its learned strategy for competition against human players.
 
 ![Game Interface](game_interface.png)
 
