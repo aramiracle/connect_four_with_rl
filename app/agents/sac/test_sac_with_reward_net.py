@@ -1,16 +1,16 @@
 import torch
 import random
 from tqdm import tqdm
-from app.hybrid.hybrid_ddqnd import HybridDDQNAgent
-from app.environment_test import ConnectFourEnv
+from app.agents.sac.sac_with_reward_net import SACAgent, RewardNet  # Import SACAgent instead of A3CAgent
+from app.environment_test import ConnectFourEnv # Ensure environment is compatible with SAC agent input format
 
 class RandomBot:
     def __init__(self, env):
         self.env = env
 
-    def select_action(self, state, epsilon):
-        available_actions = [col for col in range(self.env.action_space.n) if self.env.board[0][col] == 0]
-        return random.choice(available_actions) if available_actions else None
+    def select_action(self, state):
+        valid_actions = self.env.get_valid_actions()
+        return random.choice(valid_actions) if valid_actions else None
 
 def simulate_game(env, player1, player2):
     """Simulates a single game between two AI agents."""
@@ -18,10 +18,21 @@ def simulate_game(env, player1, player2):
     done = False
     while not done:
         if env.current_player == 1:
-            action = player1.select_action(state, epsilon=0)
+            if isinstance(player1, SACAgent):  # Check if player1 is an instance of SACAgent
+                # SACAgent expects state to be a torch tensor
+                state_tensor = torch.tensor(state).unsqueeze(0).float()
+                action = player1.select_action(state_tensor, training=False)
+            elif isinstance(player1, RandomBot):  # Check if player1 is an instance of RandomBot
+                action = player1.select_action(state)
         else:
-            action = player2.select_action(state, epsilon=0)
+            if isinstance(player2, SACAgent):  # Check if player2 is an instance of SACAgent
+                # SACAgent expects state to be a torch tensor
+                state_tensor = torch.tensor(state).unsqueeze(0).float()
+                action = player2.select_action(state_tensor, training=False)
+            elif isinstance(player2, RandomBot):  # Check if player2 is an instance of RandomBot
+                action = player2.select_action(state)
         state, _, done, _ = env.step(action)
+
     return env.winner
 
 def test_ai_vs_random(env, ai_agent, num_games=1000):
@@ -74,7 +85,7 @@ def test_random_bot_vs_ai(env, ai_agent, num_games=1000):
 
     return random_bot_wins, ai_wins, draws, ai_win_percentage
 
-def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
+def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=100):
     """Tests two AI agents against each other over a specified number of games."""
     ai1_wins = 0
     ai2_wins = 0
@@ -100,20 +111,27 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=1000):
 
 if __name__ == '__main__':
     env = ConnectFourEnv()
+    reward_net = RewardNet()
+    checkpoint_reward_net = torch.load('connect_four_reward_net.pth')
+    reward_net.load_state_dict(checkpoint_reward_net)
 
-    # Load AI agents
-    ai_agent_player1 = HybridDDQNAgent(env, player_piece=1)  # Use DQN class directly
-    checkpoint_player1 = torch.load('saved_agents/ddqnd_agents_after_train.pth')
-    ai_agent_player1.target_model.load_state_dict(checkpoint_player1['model_state_dict_player1'])
+    # Load SAC AI agents
+    ai_agent_player1 = SACAgent(env, reward_net, num_workers=4)
+    checkpoint_player1 = torch.load('saved_agents/sac_agents_after_train_rewardnet.pth')
+    ai_agent_player1.actor.load_state_dict(checkpoint_player1['actor_state_dict_player1'])
+    ai_agent_player1.critic1.load_state_dict(checkpoint_player1['critic1_state_dict_player1'])
+    ai_agent_player1.critic2.load_state_dict(checkpoint_player1['critic2_state_dict_player1'])
 
-    ai_agent_player2 = HybridDDQNAgent(env, player_piece=2)  # Use DQN class directly
-    checkpoint_player2 = torch.load('saved_agents/ddqnd_agents_after_train.pth')
-    ai_agent_player2.target_model.load_state_dict(checkpoint_player2['model_state_dict_player2'])
+    ai_agent_player2 = SACAgent(env, reward_net, num_workers=4)
+    checkpoint_player2 = torch.load('saved_agents/sac_agents_after_train_rewardnet.pth')
+    ai_agent_player2.actor.load_state_dict(checkpoint_player2['actor_state_dict_player2'])
+    ai_agent_player2.critic1.load_state_dict(checkpoint_player2['critic1_state_dict_player2'])
+    ai_agent_player2.critic2.load_state_dict(checkpoint_player2['critic2_state_dict_player2'])
 
     # Test scenarios
     ai_vs_random_results = test_ai_vs_random(env, ai_agent_player1, num_games=1000)
     random_vs_ai_results = test_random_bot_vs_ai(env, ai_agent_player2, num_games=1000)
-    ai_vs_ai_results = test_ai_vs_ai(env, ai_agent_player1, ai_agent_player2, num_games=10)
+    ai_vs_ai_results = test_ai_vs_ai(env, ai_agent_player1, ai_agent_player2, num_games=100)
 
     # Print results
     print(f"AI vs Random Bot Results: AI Wins - {ai_vs_random_results[0]}, Random Bot Wins - {ai_vs_random_results[1]}, Draws - {ai_vs_random_results[2]}, AI Win Percentage: {ai_vs_random_results[3]:.2f}%")

@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from app.environment_train import ConnectFourEnv
 import torch.nn.functional as F
-from app.alphazero.mcts import MonteCarloTreeSearch
+from app.agents.alphazero.mcts import MonteCarloTreeSearch
 
 # Define the neural network for AlphaZero
 class AlphaZeroNetwork(nn.Module):

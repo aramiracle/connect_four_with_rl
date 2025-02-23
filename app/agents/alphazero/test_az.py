@@ -1,7 +1,7 @@
 import torch
 import random
 from tqdm import tqdm
-from app.alphazero.az import AlphaZeroAgent, AlphaZeroNetwork
+from app.agents.alphazero.az import AlphaZeroAgent, AlphaZeroNetwork
 from app.environment_train import ConnectFourEnv
 
 

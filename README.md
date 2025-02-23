@@ -311,7 +311,7 @@ To train the AI model, run one of the following scripts depending on the version
 For the standard DQN as an example:
 
 ```
-python app/dqn/dqn.py
+python app/agents/dqn/dqn.py
 ```
 
 ### Playing Game with AI
@@ -326,6 +326,6 @@ Also trained models are saved in saved_model directory.
 
 To evaluate the AI's performance against a random bot, example of use:
 ```
-python app/dqn/test_dqn.py
+python app/agents/dqn/test_dqn.py
 ```
 This script will simulate games and provide statistics on the AI's performance.

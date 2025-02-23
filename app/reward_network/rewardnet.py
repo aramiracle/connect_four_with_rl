@@ -11,8 +11,8 @@ from tqdm import tqdm
 from app.environment_test import ConnectFourEnv  # Assuming ConnectFourEnv is in app.environment_test
 
 # --- Hyperparameters ---
-DATASET_NAME = "connect_four_balanced"  # Increment dataset name
-MODEL_NAME = "connect_four_reward_net"  # Increment model name
+DATASET_NAME = "reward_dataset/connect_four_balanced"  # Increment dataset name
+MODEL_NAME = "saved_reward_network/connect_four_reward_net"  # Increment model name
 DATASET_PATH = f"{DATASET_NAME}.pth"
 MODEL_SAVE_PATH = f"{MODEL_NAME}.pth"
 
@@ -353,20 +353,20 @@ def generate_terminal_states_parallel():
 
 # --- Main Execution Block ---
 if __name__ == '__main__':
-    # print("Generating balanced state data (Win/Loss only - excluding terminal states, saving non-terminal states with backward_depth_to_terminal > 2) in parallel with dynamic opponent depth and symmetrical flip and Transposition Table...")
-    # combined_data = generate_terminal_states_parallel()
+    print("Generating balanced state data (Win/Loss only - excluding terminal states, saving non-terminal states with backward_depth_to_terminal > 2) in parallel with dynamic opponent depth and symmetrical flip and Transposition Table...")
+    combined_data = generate_terminal_states_parallel()
 
     # Verify actual counts in the combined dataset.
-    # win_count = sum(1 for state, reward in combined_data if reward == 1)
-    # loss_count = sum(1 for state, reward in combined_data if reward == -1)
-    # print(f"Combined dataset balance check: Wins: {win_count}, Losses: {loss_count}")
+    win_count = sum(1 for state, reward in combined_data if reward == 1)
+    loss_count = sum(1 for state, reward in combined_data if reward == -1)
+    print(f"Combined dataset balance check: Wins: {win_count}, Losses: {loss_count}")
 
     # Trim to exactly NUM_STATES_PER_OUTCOME states per outcome. # No trimming needed, generation already limits it.
-    # balanced_data = combined_data # Already balanced by generation process
-    # print(f"Balanced dataset size: {len(balanced_data)}")
+    balanced_data = combined_data # Already balanced by generation process
+    print(f"Balanced dataset size: {len(balanced_data)}")
 
-    # torch.save(balanced_data, DATASET_PATH)
-    # print(f"Generated balanced states and saved to {DATASET_PATH}")
+    torch.save(balanced_data, DATASET_PATH)
+    print(f"Generated balanced states and saved to {DATASET_PATH}")
 
     print("Starting Reward Network training with balanced data...")
     train_reward_network(DATASET_PATH, MODEL_SAVE_PATH)

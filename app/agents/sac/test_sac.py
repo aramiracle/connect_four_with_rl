@@ -1,7 +1,7 @@
 import torch
 import random
 from tqdm import tqdm
-from app.sac.sac import SACAgent  # Import SACAgent instead of A3CAgent
+from app.agents.sac.sac import SACAgent  # Import SACAgent instead of A3CAgent
 from app.environment_test import ConnectFourEnv # Ensure environment is compatible with SAC agent input format
 
 class RandomBot:

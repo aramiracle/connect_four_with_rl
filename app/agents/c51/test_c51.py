@@ -1,5 +1,5 @@
 from app.environment_test import ConnectFourEnv
-from app.c51.c51 import C51Agent
+from app.agents.c51.c51 import C51Agent
 from tqdm import tqdm
 import torch
 import random

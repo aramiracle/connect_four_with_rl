@@ -1,9 +1,8 @@
 import torch
-import random
 from tqdm import tqdm
-from app.hybrid.hybrid_sac import HybridSACAgent
+from app.agents.hybrid.hybrid_sac import HybridSACAgent
 from app.environment_test import ConnectFourEnv
-from app.alphabeta.alphabeta import AlphaBetaAgent
+from app.agents.alphabeta.alphabeta import AlphaBetaAgent
 
 def simulate_game(env, player1, player2, epsilon=0):
     """Simulates a single game between two AI agents."""

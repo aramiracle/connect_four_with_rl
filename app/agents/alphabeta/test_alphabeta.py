@@ -1,6 +1,6 @@
 import random
 from tqdm import tqdm
-from app.alphabeta.alphabeta import AlphaBetaAgent  # Import AlphaBetaAgent
+from app.agents.alphabeta.alphabeta import AlphaBetaAgent  # Import AlphaBetaAgent
 from app.environment_test import ConnectFourEnv # Ensure you are using the correct env file, rename if needed
 
 class RandomBot:
