@@ -1,4 +1,6 @@
 # Alpha-Beta Pruning Agent for the new ConnectFourEnv
+import random
+
 class AlphaBetaAgent:
     def __init__(self, env, depth=4, player=1): # Player is now 1 or 2 to match env, Increased default depth to 6
         self.env = env
@@ -9,9 +11,9 @@ class AlphaBetaAgent:
         if depth == 0 or current_env.is_terminal():
             if current_env.is_terminal():
                 if current_env.winner == self.player if maximizing_player else (3 - self.player):
-                    return 10000
+                    return float('inf')
                 elif current_env.winner == (3 - self.player) if maximizing_player else self.player:
-                    return -10000
+                    return float('-inf')
                 else:
                     return 0
             else:
@@ -50,8 +52,7 @@ class AlphaBetaAgent:
         if not valid_actions:
             return None # No valid actions, game over probably
 
-        best_action = -1
-        best_value = -float('inf')
+        action_values = {}
         alpha = -float('inf')
         beta = float('inf')
 
@@ -59,9 +60,17 @@ class AlphaBetaAgent:
             next_env = self.env.clone() # Clone for each action
             _ = next_env.step(action) # Simulate action
             value = self.alpha_beta(next_env, self.depth - 1, alpha, beta, False) # Start with minimizing player turn, because after agent's move it will be opponent's turn
-            if value > best_value:
-                best_value = value
-                best_action = action
-            alpha = max(alpha, best_value)
+            action_values[action] = value
 
-        return best_action
+        # Rule 1: If any winning action exists, choose randomly among them.
+        winning_actions = [action for action, val in action_values.items() if val == float('inf')]
+        if winning_actions:
+            return random.choice(winning_actions)
+
+        # Rule 2: Exclude any action that results in an immediate loss.
+        non_losing_actions = [action for action, val in action_values.items() if val != float('-inf')]
+        if non_losing_actions:
+            return random.choice(non_losing_actions)
+        else:
+            # Rule 3: If all moves are losing, choose randomly from all valid actions.
+            return random.choice(valid_actions)
