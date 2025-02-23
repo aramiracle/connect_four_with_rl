@@ -102,7 +102,7 @@ class CriticNet(nn.Module):
 
 # SAC Agent implementation
 class HybridSACAgent:
-    def __init__(self, env, reward_net, num_workers=4, gamma=0.99, lr=1e-4, alpha=0.2, tau=0.005, buffer_size=10000): # Added tau, buffer_size, reward_net
+    def __init__(self, env, reward_net, player_piece, num_workers=4, gamma=0.99, lr=1e-4, alpha=0.2, tau=0.005, buffer_size=10000): # Added tau, buffer_size, reward_net
         self.env = env
         self.reward_net = reward_net # Reward Network
         self.reward_net.eval() # Set reward net to eval mode always
@@ -127,7 +127,7 @@ class HybridSACAgent:
 
         self.mse_loss = nn.MSELoss()
         self.replay_buffer = ReplayBuffer(buffer_size) # Initialize replay buffer
-        self.player_piece = 1 # Assuming player 1 for this agent
+        self.player_piece = player_piece
 
     def soft_update(self, local_model, target_model): # Soft update function
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
@@ -266,7 +266,7 @@ class HybridSACAgent:
         for action in valid_actions:
             temp_env = self.env.clone() # Create a temporary environment to simulate the move
             temp_env.step(action) # Simulate the move for current player
-            if not is_instant_loss(temp_env.board, self.player_piece): # Check if it's NOT an instant loss after opponent's turn
+            if not is_instant_win(temp_env.board, 3 - self.player_piece): # Check if opponent has instant win AFTER current player's move
                 safe_actions.append(action)
             temp_env.close()
 
@@ -275,11 +275,11 @@ class HybridSACAgent:
         else: # If all moves lead to instant loss (unlikely, but handle it), consider all valid actions
             valid_actions_to_consider = valid_actions
 
-        with torch.no_grad():
-            policy_logits = self.actor(state_tensor)
-            action_probs = torch.softmax(policy_logits, dim=1)
+        if training: # Exploration during training - still use policy distribution for exploration
+            with torch.no_grad():
+                policy_logits = self.actor(state_tensor)
+                action_probs = torch.softmax(policy_logits, dim=1)
 
-            if training:
                 valid_action_probs = action_probs[0][valid_actions_to_consider]
                 if torch.sum(valid_action_probs) == 0: # Handle case where all valid action probs are zero
                     action = random.choice(valid_actions_to_consider) # Fallback to random choice
@@ -287,12 +287,29 @@ class HybridSACAgent:
                     valid_action_probs = valid_action_probs / torch.sum(valid_action_probs) # Normalize in case of numerical issues
                     action_index = torch.multinomial(valid_action_probs, 1).item()
                     action = valid_actions_to_consider[action_index]
-            else:
-                valid_action_probs = action_probs[0][valid_actions_to_consider]
-                best_valid_action_index = torch.argmax(valid_action_probs).item()
-                action = valid_actions_to_consider[best_valid_action_index]
+                return action
+        else: # Exploitation - select action with highest Q-value among safe actions
+            q_values = []
+            for action in valid_actions_to_consider:
+                action_tensor = torch.tensor(action).unsqueeze(0) # Action needs to be tensor for CriticNet
+                q_value = self.critic1(state_tensor, action_tensor) # Or critic2, they should be similar
+                q_values.append(q_value.item())
 
+            best_action_index = q_values.index(max(q_values))
+            action = valid_actions_to_consider[best_action_index]
             return action
+
+    def is_instant_win(self, env, action, player_piece):
+        next_env = env.clone()
+        next_env.step(action)
+        board_np = next_env.board.cpu().numpy()
+        return is_instant_win(board_np, player_piece)
+
+    def is_instant_loss(self, env, action, player_piece):
+        next_env = env.clone()
+        next_env.step(action)
+        board_np = next_env.board.cpu().numpy()
+        return is_instant_loss(board_np, player_piece)
 
     def load_models(self, save_path):
         checkpoint = torch.load(save_path)
@@ -305,7 +322,7 @@ class HybridSACAgent:
         self.critic1_target.load_state_dict(self.critic1.state_dict()) # Ensure target is also loaded/synced
         self.critic2_target.load_state_dict(self.critic2.state_dict())
 
-# is_instant_win and is_instant_loss
+# is_instant_win and is_instant_loss (reuse from hybrid.py)
 def is_instant_win(board, player_piece):
     piece = int(player_piece) # Ensure piece is int for comparison
     rows, cols = board.shape
@@ -332,7 +349,7 @@ def is_instant_win(board, player_piece):
     return False
 
 def is_instant_loss(board, player_piece):
-    opponent_piece = 3 - int(player_piece) # Opponent piece is 3 - player_piece (if player is 1, opponent is 2, opponent is 1)
+    opponent_piece = 3 - int(player_piece) # Opponent piece is 3 - player_piece (if player is 1, opponent is 2, if player is 2, opponent is 1)
     return is_instant_win(board, opponent_piece) # Loss for current player is win for opponent
 
 def agent_vs_agent_train_sac(agents, env, reward_net, num_episodes=1000, batch_size=64): # Modified to use replay buffer and batch_size in agent vs agent training and reward_net
@@ -376,23 +393,23 @@ def agent_vs_agent_train_sac(agents, env, reward_net, num_episodes=1000, batch_s
 if __name__=='__main__':
     # Load RewardNet
     reward_net = RewardNet()
-    reward_net.load_state_dict(torch.load('connect_four_reward_net.pth'))
+    reward_net.load_state_dict(torch.load('saved_reward_network/connect_four_reward_net.pth'))
     reward_net.eval() # Set to eval mode
 
     # Example usage:
     env = ConnectFourEnv()
-    agent = HybridSACAgent(env, reward_net, num_workers=4) # Pass reward_net to SACAgent
+    agent = HybridSACAgent(env, reward_net, player_piece=1, num_workers=4) # Pass reward_net to SACAgent, added player_piece
     # agent.train_async(num_episodes=1000, batch_size=64) # Pretrain single agent (still uses rollouts)
 
     # env = ConnectFourEnv()
-    agent1 = HybridSACAgent(env, reward_net, num_workers=1) # Reduced num_workers for agent vs agent, replay buffer handles batching, pass reward_net
-    agent2 = HybridSACAgent(env, reward_net, num_workers=1) # Pass same reward_net to agent2
-    agent1.actor.load_state_dict(agent.actor.state_dict()) # Share weights from pretrained agent - optional, but can help
-    agent1.critic1.load_state_dict(agent.critic1.state_dict())
-    agent1.critic2.load_state_dict(agent.critic2.state_dict())
-    agent2.actor.load_state_dict(agent.actor.state_dict())
-    agent2.critic1.load_state_dict(agent.critic1.state_dict())
-    agent2.critic2.load_state_dict(agent.critic2.state_dict())
+    agent1 = HybridSACAgent(env, reward_net, player_piece=1, num_workers=1) # Reduced num_workers for agent vs agent, replay buffer handles batching, pass reward_net, added player_piece
+    agent2 = HybridSACAgent(env, reward_net, player_piece=2, num_workers=1) # Pass same reward_net to agent2, added player_piece
+    agent1.actor.load_state_dict(agent1.actor.state_dict()) # Share weights from pretrained agent - optional, but can help
+    agent1.critic1.load_state_dict(agent1.critic1.state_dict())
+    agent1.critic2.load_state_dict(agent1.critic2.state_dict())
+    agent2.actor.load_state_dict(agent2.actor.state_dict())
+    agent2.critic1.load_state_dict(agent2.critic1.state_dict())
+    agent2.critic2.load_state_dict(agent2.critic2.state_dict())
 
 
     agents = [agent1, agent2]
@@ -405,7 +422,7 @@ if __name__=='__main__':
         'critic2_state_dict_player1': agents[0].critic2.state_dict(),
         'actor_optimizer_state_dict_player1': agents[0].actor_optimizer.state_dict(),
         'critic1_optimizer_state_dict_player1': agents[0].critic1_optimizer.state_dict(),
-        'critic2_optimizer_state_dict_player1': agents[0].critic2_optimizer.state_dict(),
+        'critic2_optimizer_state_dict_player1': agents[0].critic2.state_dict(),
 
         'actor_state_dict_player2': agents[1].actor.state_dict(),
         'critic1_state_dict_player2': agents[1].critic1.state_dict(),
@@ -413,4 +430,4 @@ if __name__=='__main__':
         'actor_optimizer_state_dict_player2': agents[1].actor_optimizer.state_dict(),
         'critic1_optimizer_state_dict_player2': agents[1].critic1_optimizer.state_dict(),
         'critic2_optimizer_state_dict_player2': agents[1].critic2.state_dict(),
-    }, 'saved_agents/sac_agents_after_train_rewardnet_instantwinloss.pth')
+    }, 'saved_agents/sac_agents_after_train_rewardnet.pth')

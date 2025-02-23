@@ -4,16 +4,16 @@ from PyQt6.QtCore import Qt
 from functools import partial
 import torch
 
-from app.hybrid.hybrid_ddqnd import HybridDDQNAgent
-from app.dqn.dqn import DQNAgent
-from app.ddqn.ddqn import DDQNAgent
-from app.a3c.a3c import A3CAgent
-from app.c51.c51 import C51Agent
-from app.ppo.ppo import PPOAgent
-from app.sac.sac import SACAgent
-from app.hybrid.hybrid_sac import HybridSACAgent
+from app.agents.hybrid.hybrid_ddqnd import HybridDDQNAgent
+from app.agents.dqn.dqn import DQNAgent
+from app.agents.ddqn.ddqn import DDQNAgent
+from app.agents.a3c.a3c import A3CAgent
+from app.agents.c51.c51 import C51Agent
+from app.agents.ppo.ppo import PPOAgent
+from app.agents.sac.sac import SACAgent
+from app.agents.hybrid.hybrid_sac import HybridSACAgent
 from app.environment_test import ConnectFourEnv
-from app.alphabeta.alphabeta import AlphaBetaAgent
+from app.agents.alphabeta.alphabeta import AlphaBetaAgent
 
 # Base class for Connect Four Game
 class ConnectFour(QMainWindow):

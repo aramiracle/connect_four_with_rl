@@ -113,13 +113,13 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
 
     # Load AI agents
-    ai_agent_player1 = HybridSACAgent(env, player_piece=1)  # Use DQN class directly
+    ai_agent_player1 = HybridSACAgent(env, player_piece=1)
     checkpoint_player1 = torch.load('saved_agents/sac_agents_after_train.pth')
     ai_agent_player1.actor.load_state_dict(checkpoint_player1['actor_state_dict_player1'])
     ai_agent_player1.critic1.load_state_dict(checkpoint_player1['critic1_state_dict_player1'])
     ai_agent_player1.critic2.load_state_dict(checkpoint_player1['critic2_state_dict_player1'])
 
-    ai_agent_player2 = HybridSACAgent(env, player_piece=2)  # Use DQN class directly
+    ai_agent_player2 = HybridSACAgent(env, player_piece=2)
     checkpoint_player2 = torch.load('saved_agents/sac_agents_after_train.pth')
     ai_agent_player2.actor.load_state_dict(checkpoint_player2['actor_state_dict_player2'])
     ai_agent_player2.critic1.load_state_dict(checkpoint_player2['critic1_state_dict_player2'])

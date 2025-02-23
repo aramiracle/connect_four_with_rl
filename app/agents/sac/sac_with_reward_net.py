@@ -323,7 +323,7 @@ def agent_vs_agent_train_sac(agents, env, reward_net, num_episodes=1000, batch_s
 if __name__=='__main__':
     # Load RewardNet
     reward_net = RewardNet()
-    reward_net.load_state_dict(torch.load('connect_four_reward_net.pth'))
+    reward_net.load_state_dict(torch.load('saved_reward_network/connect_four_reward_net.pth'))
     reward_net.eval() # Set to eval mode
 
     # Example usage:

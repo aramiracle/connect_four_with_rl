@@ -112,7 +112,7 @@ def test_ai_vs_ai(env, ai_agent1, ai_agent2, num_games=100):
 if __name__ == '__main__':
     env = ConnectFourEnv()
     reward_net = RewardNet()
-    checkpoint_reward_net = torch.load('connect_four_reward_net.pth')
+    checkpoint_reward_net = torch.load('saved_reward_network/connect_four_reward_net.pth')
     reward_net.load_state_dict(checkpoint_reward_net)
 
     # Load SAC AI agents
