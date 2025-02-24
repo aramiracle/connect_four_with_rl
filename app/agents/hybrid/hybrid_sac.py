@@ -94,7 +94,7 @@ class CriticNet(nn.Module):
         state_one_hot = F.one_hot(state.to(torch.int64), num_classes=3).float()
         state_reshaped = state_one_hot.view(-1, 3, 6, 7) # Reshape for CNN
         x = F.relu(self.conv1(state_reshaped))
-        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv2(state_reshaped))
         x = x.view(x.size(0), -1) # Flatten conv output
         action_one_hot = F.one_hot(action, num_classes=7).float()
         x = torch.cat([x, action_one_hot], dim=1)
@@ -136,13 +136,14 @@ class HybridSACAgent:
     def train_step(self, batch_size=64):
         if len(self.replay_buffer) < batch_size:
             return
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(batch_size)
+        experiences = self.replay_buffer.sample(batch_size)
+        batch = Experience(*zip(*experiences))
 
-        states = torch.stack(states).to(device)
-        next_states = torch.stack(next_states).to(device)
-        actions = torch.tensor(actions).to(device)
-        rewards = torch.tensor(rewards).to(device)
-        dones = torch.tensor(dones).to(device)
+        states = torch.stack(batch.state).to(device)
+        next_states = torch.stack(batch.next_state).to(device)
+        actions = torch.tensor(batch.action).to(device)
+        rewards = torch.tensor(batch.reward).to(device)
+        dones = torch.tensor(batch.done).to(device)
 
         # Critic update
         with torch.no_grad():
@@ -201,10 +202,15 @@ class HybridSACAgent:
         if instant_win_actions:
             return random.choice(instant_win_actions)
 
+        # Check for forced win moves
+        forced_win_actions = [action for action in valid_actions if self.is_forced_win(self.env, action, self.player_piece)] # Pass player_piece here
+        if forced_win_actions:
+            return random.choice(forced_win_actions)
+
         # Filter out instant loss moves
         filtered_actions = []
         for action in valid_actions:
-            if not self.is_instant_loss(self.env, action):
+            if not self.is_instant_loss(self.env, action, self.player_piece): # Pass player_piece here
                 temp_env = self.env.clone()
                 temp_env.step(action)
                 opponent_can_instant_win = False
@@ -250,11 +256,35 @@ class HybridSACAgent:
         board_np = next_env.board.cpu().numpy()
         return is_instant_win(board_np, player_piece)
 
-    def is_instant_loss(self, env, action):
+    def is_instant_loss(self, env, action, player_piece=None): # Modified to accept player_piece
+        if player_piece is None:
+            player_piece = self.player_piece
         next_env = env.clone()
         next_env.step(action)
         board_np = next_env.board.cpu().numpy()
-        return is_instant_loss(board_np, self.player_piece)
+        return is_instant_loss(board_np, player_piece)
+
+    def is_forced_win(self, env, action, player_piece=None): # Added player_piece argument
+        if player_piece is None:
+            player_piece = self.player_piece
+        temp_env = env.clone()
+        temp_env.step(action)
+        opponent_piece = 3 - player_piece
+        valid_opponent_actions = temp_env.get_valid_actions()
+        safe_opponent_actions = []
+
+        for opponent_action in valid_opponent_actions:
+            if not self.is_instant_loss(temp_env, opponent_action, opponent_piece): # Pass opponent_piece here
+                safe_opponent_actions.append(opponent_action)
+
+        if len(safe_opponent_actions) == 1: # Only one move to avoid immediate loss
+            forced_opponent_action = safe_opponent_actions[0]
+            temp_env_after_opponent = temp_env.clone()
+            temp_env_after_opponent.step(forced_opponent_action)
+            if self.is_instant_win(temp_env_after_opponent, player_piece): # Use player_piece argument here as well
+                return True
+        return False
+
 
 def agent_vs_agent_train_hybrid_sac(agents, env, num_episodes=10000, batch_size=128):
     reward_history_p1 = []
@@ -266,10 +296,6 @@ def agent_vs_agent_train_hybrid_sac(agents, env, num_episodes=10000, batch_size=
         done = False
         player_turn = 1
         agent_index = 0
-
-        for agent in agents: # Clear buffer at start of episode for clean learning per episode - optional, can remove
-            agent.replay_buffer.buffer.clear()
-            agent.replay_buffer.position = 0
 
         while not done:
             agent = agents[agent_index]

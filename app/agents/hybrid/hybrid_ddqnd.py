@@ -137,38 +137,43 @@ class HybridDDQNAgent:
                 # If there are instant win moves, choose one randomly
                 action = random.choice(instant_win_actions)
             else:
-                # Filter out instant loss moves (Improved logic for both players)
-                filtered_actions = []
-                for action in available_actions:
-                    if not self.is_instant_loss(self.env, action): # Check for *own* instant loss
-                        temp_env = self.env.clone()
-                        temp_env.step(action)
-                        opponent_can_instant_win = False
-                        for opponent_action in temp_env.get_valid_actions():
-                            # Corrected call to self.is_instant_win to pass player_piece as positional argument
-                            if self.is_instant_win(temp_env, opponent_action, 3 - self.player_piece): # Check if *opponent* can instant win after this action, using opponent's piece
-                                opponent_can_instant_win = True
-                                break
-                        if not opponent_can_instant_win: # Only keep actions that do not lead to opponent instant win
-                            filtered_actions.append(action)
-
-
-                if filtered_actions:
-                    # If there are filtered actions, choose the action with the highest Q-value among them
-                    state_tensor = state.to(device)  # Adding batch dimension, move state to device
-                    with torch.no_grad():
-                        q_values = self.model(state_tensor).squeeze().cpu() # Move output back to CPU for action selection (argmax)
-
-                    # Mask the Q-values of invalid actions with a very negative number
-                    masked_q_values = torch.full(q_values.shape, float('-inf'))
-                    masked_q_values[filtered_actions] = q_values[filtered_actions]
-
-                    # Get the action with the highest Q-value among the valid actions
-                    action = torch.argmax(masked_q_values).item()
+                # Check for forced win moves
+                forced_win_actions = [action for action in available_actions if self.is_forced_win(self.env, action)]
+                if forced_win_actions:
+                    return random.choice(forced_win_actions)
                 else:
-                    # If there are no filtered actions (meaning all available actions lead to opponent instant win or are instant loss for self),
-                    # choose a random action from all available actions to avoid getting stuck.
-                    action = random.choice(available_actions)
+                    # Filter out instant loss moves (Improved logic for both players)
+                    filtered_actions = []
+                    for action in available_actions:
+                        if not self.is_instant_loss(self.env, action): # Check for *own* instant loss
+                            temp_env = self.env.clone()
+                            temp_env.step(action)
+                            opponent_can_instant_win = False
+                            for opponent_action in temp_env.get_valid_actions():
+                                # Corrected call to self.is_instant_win to pass player_piece as positional argument
+                                if self.is_instant_win(temp_env, opponent_action, 3 - self.player_piece): # Check if *opponent* can instant win after this action, using opponent's piece
+                                    opponent_can_instant_win = True
+                                    break
+                            if not opponent_can_instant_win: # Only keep actions that do not lead to opponent instant win
+                                filtered_actions.append(action)
+
+
+                    if filtered_actions:
+                        # If there are filtered actions, choose the action with the highest Q-value among them
+                        state_tensor = state.to(device)  # Adding batch dimension, move state to device
+                        with torch.no_grad():
+                            q_values = self.model(state_tensor).squeeze().cpu() # Move output back to CPU for action selection (argmax)
+
+                        # Mask the Q-values of invalid actions with a very negative number
+                        masked_q_values = torch.full(q_values.shape, float('-inf'))
+                        masked_q_values[filtered_actions] = q_values[filtered_actions]
+
+                        # Get the action with the highest Q-value among the valid actions
+                        action = torch.argmax(masked_q_values).item()
+                    else:
+                        # If there are no filtered actions (meaning all available actions lead to opponent instant win or are instant loss for self),
+                        # choose a random action from all available actions to avoid getting stuck.
+                        action = random.choice(available_actions)
 
         # Ensure the model is back in training mode
         self.model.train()
@@ -192,6 +197,25 @@ class HybridDDQNAgent:
         # Convert PyTorch tensor board to NumPy array before passing to Numba
         board_np = next_env.board.cpu().numpy()
         return is_instant_loss(board_np, self.player_piece) # Pass player_piece to static is_instant_loss
+
+    def is_forced_win(self, env, action):
+        temp_env = env.clone()
+        temp_env.step(action)
+        opponent_piece = 3 - self.player_piece
+        valid_opponent_actions = temp_env.get_valid_actions()
+        safe_opponent_actions = []
+
+        for opponent_action in valid_opponent_actions:
+            if not self.is_instant_loss(temp_env, opponent_action): # check if opponent loses instantly
+                safe_opponent_actions.append(opponent_action)
+
+        if len(safe_opponent_actions) == 1: # Only one move to avoid immediate loss
+            forced_opponent_action = safe_opponent_actions[0]
+            temp_env_after_opponent = temp_env.clone()
+            temp_env_after_opponent.step(forced_opponent_action)
+            if self.is_instant_win(temp_env_after_opponent, self.player_piece): # Check if after opponent's forced move, agent has instant win
+                return True
+        return False
 
     def train_step(self):
         if len(self.buffer) >= self.batch_size:
@@ -303,4 +327,4 @@ if __name__ == '__main__':
         'model_state_dict_player2': hybrid_agents[1].model.state_dict(),
         'target_model_state_dict_player2': hybrid_agents[1].target_model.state_dict(),
         'optimizer_state_dict_player2': hybrid_agents[1].optimizer.state_dict(),
-    }, 'saved_agents/hybrid_agents_after_train_player_aware_fixed_call.pth')
+    }, 'saved_agents/hybrid_agents_after_train_player_aware_forced_win.pth')

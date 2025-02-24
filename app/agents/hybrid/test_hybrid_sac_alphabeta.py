@@ -88,13 +88,13 @@ if __name__ == '__main__':
     ai_agent_player2.critic2.load_state_dict(checkpoint_player2['critic2_state_dict_player2'])
 
     # Create AlphaBeta Agents
-    alphabeta_agent_player1 = AlphaBetaAgent(env, depth=5, player=1) # Depth 4 for reasonable time, player 1
-    alphabeta_agent_player2 = AlphaBetaAgent(env, depth=5, player=2) # Depth 4 for reasonable time, player 2
+    alphabeta_agent_player1 = AlphaBetaAgent(env, depth=2, player=1) # Depth 4 for reasonable time, player 1
+    alphabeta_agent_player2 = AlphaBetaAgent(env, depth=2, player=2) # Depth 4 for reasonable time, player 2
 
 
     # Test scenarios
-    hybrid_vs_alphabeta_results = test_hybrid_vs_alphabeta(env, ai_agent_player1, alphabeta_agent_player2, num_games=100) # Test Hybrid vs AlphaBeta
-    alphabeta_vs_hybrid_results = test_alphabeta_vs_hybrid(env, alphabeta_agent_player1, ai_agent_player2, num_games=100) # Test AlphaBeta vs Hybrid
+    hybrid_vs_alphabeta_results = test_hybrid_vs_alphabeta(env, ai_agent_player1, alphabeta_agent_player2, num_games=1000) # Test Hybrid vs AlphaBeta
+    alphabeta_vs_hybrid_results = test_alphabeta_vs_hybrid(env, alphabeta_agent_player1, ai_agent_player2, num_games=1000) # Test AlphaBeta vs Hybrid
 
 
     # Print results

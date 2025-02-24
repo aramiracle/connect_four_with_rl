@@ -284,7 +284,7 @@ In each model provided a script which tests the performance of Connect Four AI a
   - Prints the results of each testing scenario.
 
 - **Performance Summary:**
-  - The Hybrid Soft Actor-Critic agent stands out with an outstanding 95% to 98% win rate against the `random_bot`, showcasing exceptional performance.
+  - The Hybrid Soft Actor-Critic agent stands out with an outstanding 95% to 98% win rate against the `random_bot`, showcasing exceptional performance which in ELO system if you consider random bot ELO, 1200 then the AI approximately have ELO 1750.
 
 
 ## Installation

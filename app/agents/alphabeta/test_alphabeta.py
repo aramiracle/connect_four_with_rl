@@ -85,8 +85,8 @@ if __name__ == '__main__':
     env = ConnectFourEnv()
 
     # Initialize AlphaBeta Agent
-    ai_agent_alphabeta_player1 = AlphaBetaAgent(env, depth=5, player=1) # Player 1 for AlphaBeta agent
-    ai_agent_alphabeta_player2 = AlphaBetaAgent(env, depth=5, player=2) # Player 2 for AlphaBeta agent
+    ai_agent_alphabeta_player1 = AlphaBetaAgent(env, depth=2, player=1) # Player 1 for AlphaBeta agent
+    ai_agent_alphabeta_player2 = AlphaBetaAgent(env, depth=2, player=2) # Player 2 for AlphaBeta agent
 
     # Test scenarios - AlphaBeta vs Random Bot
     alphabeta_vs_random_results = test_ai_vs_random(env, ai_agent_alphabeta_player1, num_games=1000)

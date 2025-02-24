@@ -254,21 +254,24 @@ class HybridSACAgent:
         valid_actions = self.env.get_valid_actions()
 
         # Check for instant win moves
-        for action in valid_actions:
-            temp_env = self.env.clone() # Create a temporary environment to simulate the move
-            _, _, done, _ = temp_env.step(action) # Simulate the move for current player
-            if done and temp_env.winner == self.player_piece: # Check if it's an instant win
-                temp_env.close()
-                return action
+        instant_win_actions = [action for action in valid_actions if self.is_instant_win(self.env, action)]
+        if instant_win_actions:
+            return random.choice(instant_win_actions)
+
+        # Check for forced win moves
+        forced_win_actions = [action for action in valid_actions if self.is_forced_win(self.env, action)]
+        if forced_win_actions:
+            return random.choice(forced_win_actions)
 
         # Filter out instant loss moves
         safe_actions = []
         for action in valid_actions:
-            temp_env = self.env.clone() # Create a temporary environment to simulate the move
-            temp_env.step(action) # Simulate the move for current player
-            if not is_instant_win(temp_env.board, 3 - self.player_piece): # Check if opponent has instant win AFTER current player's move
-                safe_actions.append(action)
-            temp_env.close()
+            if not self.is_instant_loss(self.env, action): # Check for instant loss for self
+                temp_env = self.env.clone() # Create a temporary environment to simulate the move
+                temp_env.step(action) # Simulate the move for current player
+                if not is_instant_win(temp_env.board, 3 - self.player_piece): # Check if opponent has instant win AFTER current player's move
+                    safe_actions.append(action)
+                temp_env.close()
 
         if safe_actions:
             valid_actions_to_consider = safe_actions
@@ -299,17 +302,41 @@ class HybridSACAgent:
             action = valid_actions_to_consider[best_action_index]
             return action
 
-    def is_instant_win(self, env, action, player_piece):
+    def is_instant_win(self, env, action, player_piece=None):
+        if player_piece is None:
+            player_piece = self.player_piece
         next_env = env.clone()
         next_env.step(action)
         board_np = next_env.board.cpu().numpy()
         return is_instant_win(board_np, player_piece)
 
-    def is_instant_loss(self, env, action, player_piece):
+    def is_instant_loss(self, env, action, player_piece=None):
+        if player_piece is None:
+            player_piece = self.player_piece
         next_env = env.clone()
         next_env.step(action)
         board_np = next_env.board.cpu().numpy()
         return is_instant_loss(board_np, player_piece)
+
+    def is_forced_win(self, env, action):
+        temp_env = env.clone()
+        temp_env.step(action)
+        opponent_piece = 3 - self.player_piece
+        valid_opponent_actions = temp_env.get_valid_actions()
+        safe_opponent_actions = []
+
+        for opponent_action in valid_opponent_actions:
+            if not self.is_instant_loss(temp_env, opponent_action): # check if opponent loses instantly
+                safe_opponent_actions.append(opponent_action)
+
+        if len(safe_opponent_actions) == 1: # Only one move to avoid immediate loss
+            forced_opponent_action = safe_opponent_actions[0]
+            temp_env_after_opponent = temp_env.clone()
+            temp_env_after_opponent.step(forced_opponent_action)
+            if self.is_instant_win(temp_env_after_opponent, self.player_piece): # Check if after opponent's forced move, agent has instant win
+                return True
+        return False
+
 
     def load_models(self, save_path):
         checkpoint = torch.load(save_path)
@@ -422,7 +449,7 @@ if __name__=='__main__':
         'critic2_state_dict_player1': agents[0].critic2.state_dict(),
         'actor_optimizer_state_dict_player1': agents[0].actor_optimizer.state_dict(),
         'critic1_optimizer_state_dict_player1': agents[0].critic1_optimizer.state_dict(),
-        'critic2_optimizer_state_dict_player1': agents[0].critic2.state_dict(),
+        'critic2_optimizer_state_dict_player1': agents[0].critic2_optimizer.state_dict(),
 
         'actor_state_dict_player2': agents[1].actor.state_dict(),
         'critic1_state_dict_player2': agents[1].critic1.state_dict(),
@@ -430,4 +457,4 @@ if __name__=='__main__':
         'actor_optimizer_state_dict_player2': agents[1].actor_optimizer.state_dict(),
         'critic1_optimizer_state_dict_player2': agents[1].critic1_optimizer.state_dict(),
         'critic2_optimizer_state_dict_player2': agents[1].critic2.state_dict(),
-    }, 'saved_agents/sac_agents_after_train_rewardnet.pth')
+    }, 'saved_agents/sac_agents_after_train_rewardnet_forced_win.pth')
