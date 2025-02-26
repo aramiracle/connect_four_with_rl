@@ -269,7 +269,7 @@ def agent_vs_agent_train_sac(agents, env, num_episodes=1000, batch_size=64): # M
         for i in range(len(agents)):
             agents[i].train(batch_size=batch_size) # Train from replay buffer, no rollout needed in agent vs agent
 
-        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]}, Total Reward Player 2: {total_rewards[1]}, Replay Buffer Size: {len(agents[0].replay_buffer)}") # Added replay buffer size
+        tqdm.write(f"Episode: {episode}, Winner: {info['winner']}, Total Reward Player 1: {total_rewards[0]:.2f}, Total Reward Player 2: {total_rewards[1]:.2f}, Replay Buffer Size: {len(agents[0].replay_buffer)}") # Added replay buffer size
 
     env.close()
 
@@ -278,7 +278,7 @@ if __name__=='__main__':
     # Example usage:
     env = ConnectFourEnv()
     agent = SACAgent(env, num_workers=4)
-    agent.train_async(num_episodes=1000, batch_size=64) # Pretrain single agent (still uses rollouts)
+    # agent.train_async(num_episodes=1000, batch_size=64) # Pretrain single agent (still uses rollouts)
 
     env = ConnectFourEnv()
     agent1 = SACAgent(env, num_workers=1) # Reduced num_workers for agent vs agent, replay buffer handles batching
@@ -292,7 +292,7 @@ if __name__=='__main__':
 
 
     agents = [agent1, agent2]
-    agent_vs_agent_train_sac(agents, env, num_episodes=30000, batch_size=128) # Train agents against each other using replay buffer
+    agent_vs_agent_train_sac(agents, env, num_episodes=500000, batch_size=128) # Train agents against each other using replay buffer
 
     # Save the trained model
     torch.save({

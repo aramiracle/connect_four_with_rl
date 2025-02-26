@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     # Initialize our SAC agent and load pretrained weights.
     ai_agent = SACAgent(env, num_workers=4)
-    checkpoint = torch.load('saved_agents/sac_agents_after_train.pth')
+    checkpoint = torch.load('saved_agents/sac_agents_after_train_v2.pth')
     ai_agent.actor.load_state_dict(checkpoint['actor_state_dict_player1'])
     ai_agent.critic1.load_state_dict(checkpoint['critic1_state_dict_player1'])
     ai_agent.critic2.load_state_dict(checkpoint['critic2_state_dict_player1'])
