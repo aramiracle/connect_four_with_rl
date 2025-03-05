@@ -1,7 +1,6 @@
 import gym
 import numpy as np
 import torch
-from copy import deepcopy
 
 # Optimized Custom environment for Connect Four game following the gym interface
 class ConnectFourEnv(gym.Env):
@@ -80,19 +79,19 @@ class ConnectFourEnv(gym.Env):
         reward += alignment_reward
 
         if self.check_block_opponent_win(row, col):
-            reward += 0.3
+            reward += 0.25
 
         if self.check_create_winning_threat(row, col):
-            reward += 0.2
+            reward += 0.1
 
         if self.check_give_opponent_winning_move(row, col):
-            reward -= 0.7
+            reward -= 0.6
 
         if self.check_missed_win(last_action):
-            reward -= 0.8
+            reward -= 0.6
 
         if self.check_forced_win(last_action): # Use last_action here, not action (which is col)
-            reward += 0.8
+            reward += 0.5
 
         return reward
 
